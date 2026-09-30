@@ -556,7 +556,7 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
 <nav class="tabbar">
   <button class="tab active" data-view="pin" onclick="mostrarVista('pin')"><span class="tab-ico">⚡</span>PIN</button>
   <button class="tab" data-view="buscador" onclick="mostrarVista('buscador')"><span class="tab-ico">🔍</span>Buscador</button>
-    <button class="tab" data-view="ia" onclick="mostrarVista('ia')"><span class="tab-ico">🤖</span>IAPOL</button>
+  <button class="tab" data-view="ia" onclick="mostrarVista('ia')"><span class="tab-ico">🤖</span>IAPOL</button>
 </nav>
 
 <!-- Banner Android (solo web) -->
@@ -625,33 +625,55 @@ function copiarTexto(texto,msg){
   }else respaldo();
 }
 
-/* ======================= IA POLICÍA ======================= */
+/* ======================= PESTAÑAS ======================= */
 const URL_IA_POLICIA='https://app.ia.policia.gov.co/login';
-function abrirIaPolicia(){
-  const C=window.Capacitor;
-  if(C&&C.getPlatform&&C.getPlatform()==='android'){
-    // En la APK se abre una pantalla nativa en modo escritorio con cámara y micrófono
-    C.nativePromise('IaPolicia','abrir',{}).catch(()=>{window.location.href=URL_IA_POLICIA;});
-    return;
-  }
-  // iPhone / web: se abre en el navegador
-  window.open(URL_IA_POLICIA,'_blank');
+const CAP=window.Capacitor;
+const IA_NATIVA=!!(CAP&&CAP.getPlatform&&CAP.getPlatform()==='android');
+const scrollPorVista={pin:0,buscador:0};
+let vistaActual='pin';      // pestaña HTML visible (pin | buscador)
+let iaVisible=false;        // IA Policía mostrada encima (solo APK)
+window.__iaVisible=false;
+
+function marcarTab(v){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+}
+function tabbarTop(){ return document.querySelector('.tabbar').getBoundingClientRect().top; }
+
+function mostrarIa(){
+  if(!IA_NATIVA){ window.open(URL_IA_POLICIA,'_blank'); return; } // iPhone / web: se abre en Safari
+  if(document.activeElement)document.activeElement.blur();
+  CAP.nativePromise('IaPolicia','mostrar',{tabbarTop:tabbarTop()})
+    .then(()=>{iaVisible=true;window.__iaVisible=true;marcarTab('ia');})
+    .catch(()=>{window.location.href=URL_IA_POLICIA;});
+}
+function ocultarIa(){
+  if(!iaVisible)return;
+  iaVisible=false;window.__iaVisible=false;
+  CAP.nativePromise('IaPolicia','ocultar',{}).catch(()=>{});
 }
 
-/* ======================= PESTAÑAS ======================= */
-const scrollPorVista={pin:0,buscador:0};
-let vistaActual='pin';
 function mostrarVista(v){
+  if(v==='ia'){mostrarIa();return;}
   if(v!=='pin'&&v!=='buscador')v='pin';
-  scrollPorVista[vistaActual]=window.scrollY;
-  vistaActual=v;
-  document.getElementById('viewPin').classList.toggle('hidden',v!=='pin');
-  document.getElementById('viewBuscador').classList.toggle('hidden',v!=='buscador');
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
-  document.getElementById('appTitle').textContent=v==='pin'?'Generador de PIN':'Buscador MEBUC';
-  document.getElementById('appSub').textContent=v==='pin'?'Policía Metropolitana de Bucaramanga':'Distritos · Estaciones · CAI · Barrios';
-  lsSet('mebuc_tab',v);
-  window.scrollTo(0,scrollPorVista[v]||0);
+  ocultarIa(); // lo de IA Policía queda guardado tal cual
+  if(v!==vistaActual){
+    scrollPorVista[vistaActual]=window.scrollY;
+    vistaActual=v;
+    document.getElementById('viewPin').classList.toggle('hidden',v!=='pin');
+    document.getElementById('viewBuscador').classList.toggle('hidden',v!=='buscador');
+    document.getElementById('appTitle').textContent=v==='pin'?'Generador de PIN':'Buscador MEBUC';
+    document.getElementById('appSub').textContent=v==='pin'?'Policía Metropolitana de Bucaramanga':'Distritos · Estaciones · CAI · Barrios';
+    lsSet('mebuc_tab',v);
+    window.scrollTo(0,scrollPorVista[v]||0);
+  }
+  marcarTab(v);
+}
+
+if(IA_NATIVA){
+  // Botón atrás del celular estando en IA Policía sin más páginas: volver a la pestaña anterior
+  CAP.addListener('IaPolicia','salir',()=>mostrarVista(vistaActual));
+  // Teclado o giro de pantalla: reajustar el tamaño de IA Policía
+  window.addEventListener('resize',()=>{ if(iaVisible) CAP.nativePromise('IaPolicia','reubicar',{tabbarTop:tabbarTop()}).catch(()=>{}); });
 }
 
 // Desde el buscador: carga el cuadrante en el PIN
@@ -1104,7 +1126,7 @@ window.addEventListener('load',()=>{
   }
 });
 
-mostrarVista(lsGet('mebuc_tab')||'pin');
+vistaActual='';mostrarVista(lsGet('mebuc_tab')||'pin');
 
 /* ---------- Instalación PWA (solo navegador) ---------- */
 var deferredPrompt=null;
@@ -1620,6 +1642,7 @@ render();
       if (!nueva || !apk || nueva <= versionActual) return;
       urlApk = apk.browser_download_url;
       mostrando = true;
+      if (window.__iaVisible) { try { mostrarVista('pin'); } catch(e){} }
       $('updVer').textContent = 'Versión ' + versionActual + '  →  ' + nueva;
       $('updNotas').textContent = (rel.body || '').trim();
       $('upd').classList.add('open');
