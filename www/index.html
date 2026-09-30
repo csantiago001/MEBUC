@@ -240,6 +240,13 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
 .vb .barrio-pill{font-size:12.5px;padding:4px 10px;border-radius:7px;background:var(--bg);border:1px solid var(--border);color:var(--text);}
 .vb .barrio-pill.hit{background:#fff1a8;border-color:#f0d868;color:#4a3c00;}
 .vb .barrio-empty{font-size:12.5px;color:var(--text-faint);font-style:italic;}
+.vb .zap-hero{display:inline-flex;align-items:baseline;gap:8px;font-family:"SFMono-Regular",Consolas,monospace;font-weight:900;font-size:26px;line-height:1;padding:10px 16px;border-radius:12px;background:var(--accent-soft);color:var(--accent);letter-spacing:.5px;}
+.vb .zap-hero .zap-lbl{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;font-weight:800;letter-spacing:1px;opacity:.75;}
+.vb .zap-hero.d1{background:var(--d1-soft);color:var(--d1);}
+.vb .zap-hero.d2{background:var(--d2-soft);color:var(--d2);}
+.vb .zap-hero.d3{background:var(--d3-soft);color:var(--d3);}
+.vb .zap-hero.d4{background:var(--d4-soft);color:var(--d4);}
+.vb .card-zap .card-top{align-items:center;margin-bottom:12px;}
 .vb .add-btn{width:100%;padding:13px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;font-family:inherit;}
 .vb mark{background:#ffd75e;color:#241d00;border-radius:3px;padding:0 1px;}
 .vb .empty-state{text-align:center;color:var(--text-faint);padding:60px 20px;font-size:14px;}
@@ -266,6 +273,23 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
 .vb .confirm-modal .modal{max-width:380px;}
 .vb .confirm-icon{font-size:30px;text-align:center;margin-bottom:8px;}
 .vb .confirm-text{text-align:center;font-size:14.5px;color:var(--text);line-height:1.45;margin-bottom:4px;}
+
+/* ===== Código de acceso ===== */
+#acceso{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;padding:24px;
+  background:linear-gradient(140deg,#0f2027 0%,#1a3a6e 55%,#2c5364 100%);color:#fff;text-align:center;}
+#acceso.open{display:flex;}
+#acceso .acc-card{width:100%;max-width:340px;}
+#acceso .acc-logo{width:84px;height:84px;margin:0 auto 18px;border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.35);}
+#acceso .acc-logo img{width:100%;height:100%;object-fit:cover;}
+#acceso h1{font-size:1.25em;margin-bottom:6px;}
+#acceso .acc-sub{font-size:.88em;color:rgba(255,255,255,.75);margin-bottom:22px;line-height:1.5;}
+#acceso input{width:100%;padding:15px;border-radius:12px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);
+  color:#fff;font-size:1.5em;letter-spacing:.35em;text-align:center;font-weight:800;outline:none;font-family:inherit;}
+#acceso input:focus{border-color:#f9a825;}
+#acceso .acc-btn{width:100%;margin-top:14px;background:#f9a825;color:#0f2027;border:none;padding:15px;border-radius:12px;font-weight:800;font-size:1em;cursor:pointer;font-family:inherit;}
+#acceso .acc-btn:disabled{opacity:.55;}
+#acceso .acc-msg{min-height:1.4em;margin-top:14px;font-size:.88em;color:#aac4d8;}
+#acceso .acc-msg.err{color:#ff8a80;}
 
 /* ===== Actualización obligatoria (APK) ===== */
 #upd{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:24px;
@@ -576,6 +600,18 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
   <button onclick="cerrarIosHint()">Entendido</button>
 </div>
 
+<!-- Código de acceso (se pide solo la primera vez o si el administrador lo cambia) -->
+<div id="acceso" role="dialog" aria-modal="true">
+  <div class="acc-card">
+    <div class="acc-logo"><img src="icon-192.png" alt=""></div>
+    <h1>Acceso restringido</h1>
+    <div class="acc-sub">Ingresa el código de acceso que te entregó el administrador.</div>
+    <input id="accCodigo" type="password" inputmode="numeric" autocomplete="off" maxlength="32" placeholder="••••••">
+    <button class="acc-btn" id="accBtn">Ingresar</button>
+    <div class="acc-msg" id="accMsg"></div>
+  </div>
+</div>
+
 <!-- Actualización obligatoria (solo APK Android) -->
 <div id="upd" role="dialog" aria-modal="true">
   <div class="upd-card">
@@ -640,6 +676,7 @@ function marcarTab(v){
 function tabbarTop(){ return document.querySelector('.tabbar').getBoundingClientRect().top; }
 
 function mostrarIa(){
+  if(window.__bloqueado)return;
   if(!IA_NATIVA){ window.open(URL_IA_POLICIA,'_blank'); return; } // iPhone / web: se abre en Safari
   if(document.activeElement)document.activeElement.blur();
   CAP.nativePromise('IaPolicia','mostrar',{tabbarTop:tabbarTop()})
@@ -700,8 +737,8 @@ const EVENTOS={
   oro_lesionado_cp:{categoria:'ORO 20',nombre:'LESIONADO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por una riña...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue atacada con un arma cortopunzante...'},{titulo:'Estado de la víctima / traslado',placeholder:'Ej: La víctima fue trasladada en ambulancia...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperó un arma cortopunzante tipo cuchillo...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
   oro_lesionado_at:{categoria:'ORO 20',nombre:'LESIONADO POR ARMA TRAUMÁTICA',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Se registró la detonación de un arma traumática...'},{titulo:'Estado de la víctima / traslado',placeholder:'Ej: La víctima fue trasladada...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
   oro_deceso:{categoria:'ORO 20',nombre:'DECESO HOSPITALARIO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue atacada y posteriormente...'},{titulo:'Traslado y deceso',placeholder:'Ej: La víctima fue trasladada a la clínica donde falleció...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
-  oro_homicidio_af:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios llegaron al lugar y dispararon...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperaron vainillas de arma de fuego...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
-  oro_homicidio_cp:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios atacaron al occiso con un arma cortopunzante...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
+  oro_homicidio_af:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios llegaron al lugar y dispararon...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperaron vainillas de arma de fuego...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
+  oro_homicidio_cp:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios atacaron al occiso con un arma cortopunzante...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
   contra_verificacion_x:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PUBLICACIÓN RED SOCIAL X',municipioLibre:false,saludo:{destinatario:'mi capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_policial_lesionado:{categoria:'CONTRAINTELIGENCIA',nombre:'POLICIAL LESIONADO EN PROCESAMIENTO',municipioLibre:false,saludo:{destinatario:'mi General',prefijo:'respetuosamente me permito informar la siguiente novedad'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:true,muestraUnidad:true,muestraTelefono:true,muestraVictimarios:false,tipoVictima:'policial'},
   contra_servicio_policia:{categoria:'CONTRAINTELIGENCIA',nombre:'SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA',municipioLibre:true,saludo:{destinatario:'mi general'},plantillaAspectos:[{titulo:'Materialización de los hechos',placeholder:'Ej: La materialización de los hechos se presentó en jurisdicción de la ZAP...'},{titulo:'Responsables de la ZAP',placeholder:'Ej: Responsables de la ZAP. SI Fredy Rubiano Ramos CC. 91456694...'},{titulo:'Motivo de policía',placeholder:'Ej: Al momento de los hechos se encontraban atendiendo un motivo de policía...'},{titulo:'Cobertura ZAP',placeholder:'Ej: Se encontraban cubriendo la ZAP...'}],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'}
@@ -843,7 +880,7 @@ function agregarVictima(){
     <div class="form-group"><label>Alias (opcional)</label><input type="text" class="v-alias" placeholder="El Gordo"></div>
     <div class="form-group"><label>Cédula</label><input type="text" inputmode="numeric" class="v-cedula" placeholder="1102362852"></div>
   </div>
-  <div class="form-group ${c&&!c.muestraHerida?'hidden':''}" data-field="herida"><label>${c&&c.tipoVictima==='occiso'?'Causa de muerte':'Herida / lesión principal'}</label><input type="text" class="v-herida" placeholder="${c&&c.tipoVictima==='occiso'?'múltiples impactos de arma de fuego':'una herida en el tórax'}"></div>
+  <div class="form-group ${c&&!c.muestraHerida?'hidden':''}" data-field="herida"><label>Herida / lesión principal</label><input type="text" class="v-herida" placeholder="${c&&c.tipoVictima==='occiso'?'múltiples impactos de arma de fuego':'una herida en el tórax'}"></div>
   <div class="form-group ${c&&c.muestraUnidad?'':'hidden'}" data-field="unidad"><label>Unidad adscrita</label><input type="text" class="v-unidad" placeholder="Ej: FUDIS"></div>
   <div class="form-group ${c&&c.muestraTelefono?'':'hidden'}" data-field="telefono"><label>Celular</label><input type="tel" class="v-telefono" placeholder="3208850848"></div>`;
   document.getElementById('victimasContainer').appendChild(div);
@@ -1007,7 +1044,7 @@ function generarOro20(evId,d){
   if(vPrincipal.alias)victimaTexto+=' alias *'+vPrincipal.alias+'*';
   if(vPrincipal.edad)victimaTexto+=' ('+vPrincipal.edad+' años)';
   if(evId.includes('homicidio')||evId==='oro_deceso'){
-    pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en '+(d.lugar||'[lugar]')+', se presentó el '+config.nombre.toLowerCase()+' de '+victimaTexto+'.\n\n';
+    pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en '+(d.lugar||'[lugar]')+', se presentó el '+config.nombre.toLowerCase()+' de '+victimaTexto+(vPrincipal.herida?', quien presentó '+vPrincipal.herida:'')+'.\n\n';
   }else{
     pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en '+(d.lugar||'[lugar]')+', resultó lesionado '+victimaTexto+', quien presenta '+(vPrincipal.herida||'[herida/lesión]')+'.\n\n';
   }
@@ -1265,7 +1302,7 @@ function caiLabel(g) {
 }
 
 /* ---------------- Render: tarjeta de cuadrante ---------------- */
-function cuadranteCardHtml(g, rawTerms) {
+function cuadranteCardHtml(g, rawTerms, modoCai) {
   const cl = caiLabel(g);
   const barrioHtml = (g.barrios.length === 1 && g.barrios[0] === 'Sin barrios registrados')
     ? `<div class="barrio-empty">Sin barrios registrados todavía.</div>`
@@ -1274,6 +1311,22 @@ function cuadranteCardHtml(g, rawTerms) {
         const isHit = rawTerms && rawTerms.length && rawTerms.some(t => nb.includes(normalize(t)));
         return `<span class="barrio-pill${isHit ? ' hit' : ''}">${highlight(b, rawTerms)}</span>`;
       }).join('')}</div>`;
+
+  // Dentro de un CAI: el protagonista es el código ZAP (el CAI ya se ve arriba en la ruta)
+  if (modoCai) {
+    return `
+    <div class="card card-zap" data-id="${g.id}">
+      <div class="card-top">
+        <div class="zap-hero ${distClass(g.distrito)}"><span class="zap-lbl">ZAP</span>${escapeHtml(g.codigo)}</div>
+        <div class="right-controls">
+          <button class="edit-btn" data-usepin="${g.id}" title="Usar este cuadrante en el PIN">📝</button>
+          <button class="edit-btn" data-edit="${g.id}" title="Editar cuadrante">✏️</button>
+        </div>
+      </div>
+      ${barrioHtml}
+    </div>
+  `;
+  }
 
   return `
     <div class="card" data-id="${g.id}">
@@ -1408,7 +1461,7 @@ function renderExplorer() {
         {label: isStation ? selCai : 'CAI ' + selCai, onClick: null}
       ])}
       <div class="section-label">Cuadrantes</div>
-      ${cuadrantes.map(g => cuadranteCardHtml(g, [])).join('')}
+      ${cuadrantes.map(g => cuadranteCardHtml(g, [], true)).join('')}
       <button class="add-btn" id="addCuadranteBtn">+ Agregar cuadrante a ${isStation ? escapeHtml(selCai) : 'CAI ' + escapeHtml(selCai)}</button>
     `;
   }
@@ -1598,6 +1651,93 @@ render();
 
 <script src="config-actualizacion.js"></script>
 <script>
+/* ======================= CÓDIGO DE ACCESO =======================
+   - El código NO está escrito en la app: solo su huella (PBKDF2-SHA256) en "acceso.json" del repositorio.
+   - Se pide la primera vez. Si el administrador cambia el código, se vuelve a pedir a TODOS.
+   - Sin internet: entra quien ya se activó antes; un celular nuevo necesita internet para activarse.
+   - 5 intentos fallidos = bloqueo de 5 minutos. */
+(function(){
+  var K='mebuc_acceso', KB='mebuc_acceso_bloqueo', KF='mebuc_acceso_fallos';
+  var cfg=null, ultima=0;
+  var $=function(id){return document.getElementById(id);};
+  function get(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function set(k,v){try{localStorage.setItem(k,String(v));}catch(e){}}
+  function del(k){try{localStorage.removeItem(k);}catch(e){}}
+  function msg(t,err){var m=$('accMsg');m.textContent=t||'';m.classList.toggle('err',!!err);}
+  function abrir(t,err){
+    window.__bloqueado=true;
+    if(window.__iaVisible&&typeof mostrarVista==='function')mostrarVista('pin');
+    $('acceso').classList.add('open');msg(t,err);
+  }
+  function cerrar(){window.__bloqueado=false;$('acceso').classList.remove('open');}
+  function url(){
+    var repo=window.MEBUC_REPO||'csantiago001/MEBUC';
+    return 'https://raw.githubusercontent.com/'+repo+'/main/acceso.json?t='+Date.now();
+  }
+  async function cargar(){
+    var ctl=new AbortController(), t=setTimeout(function(){ctl.abort();},8000);
+    try{
+      var r=await fetch(url(),{cache:'no-store',signal:ctl.signal});
+      if(!r.ok)throw new Error('http');
+      var c=await r.json();
+      if(!c.hash||!c.salt)throw new Error('config');
+      $('accCodigo').setAttribute('inputmode',c.soloNumeros===false?'text':'numeric');
+      return c;
+    }finally{clearTimeout(t);}
+  }
+  async function huella(codigo,c){
+    var k=await crypto.subtle.importKey('raw',new TextEncoder().encode(codigo),'PBKDF2',false,['deriveBits']);
+    var salt=new Uint8Array(c.salt.match(/../g).map(function(h){return parseInt(h,16);}));
+    var b=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:salt,iterations:c.iteraciones||310000},k,256);
+    return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0');}).join('');
+  }
+  async function revisar(){
+    ultima=Date.now();
+    try{cfg=await cargar();}catch(e){cfg=null;}
+    var guardado=get(K);
+    if(cfg){
+      if(guardado===cfg.hash){cerrar();return;}
+      if(guardado)del(K);
+      abrir(guardado?'El código de acceso cambió. Ingresa el nuevo código.':'');
+    }else{
+      if(guardado){cerrar();return;}
+      abrir('Necesitas conexión a internet para activar la app la primera vez.',true);
+    }
+  }
+  async function ingresar(){
+    var hasta=+(get(KB)||0);
+    if(Date.now()<hasta){msg('Demasiados intentos. Espera '+Math.ceil((hasta-Date.now())/60000)+' min.',true);return;}
+    var v=$('accCodigo').value.trim();
+    if(!v){msg('Escribe el código.',true);return;}
+    var b=$('accBtn');b.disabled=true;b.textContent='Verificando…';msg('');
+    try{
+      if(!cfg)cfg=await cargar();
+      var h=await huella(v,cfg);
+      if(h===cfg.hash){
+        set(K,cfg.hash);del(KF);del(KB);$('accCodigo').value='';cerrar();
+        if(typeof mostrarToast==='function')mostrarToast('✅ Acceso concedido');
+      }else{
+        var f=(+(get(KF)||0))+1;
+        if(f>=5){set(KB,Date.now()+5*60000);del(KF);msg('Código incorrecto. Acceso bloqueado por 5 minutos.',true);}
+        else{set(KF,f);msg('Código incorrecto. Te quedan '+(5-f)+' intento(s).',true);}
+        $('accCodigo').value='';
+      }
+    }catch(e){
+      msg('Sin conexión. Revisa tu internet e intenta de nuevo.',true);
+    }finally{b.disabled=false;b.textContent='Ingresar';}
+  }
+  $('accBtn').addEventListener('click',ingresar);
+  $('accCodigo').addEventListener('keydown',function(e){if(e.key==='Enter')ingresar();});
+
+  // Si ya se activó antes, entra de una vez y se verifica en segundo plano
+  if(get(K))cerrar();else abrir('');
+  revisar();
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible'&&Date.now()-ultima>10*60*1000)revisar();
+  });
+})();
+</script>
+<script>
 /* ======================= ACTUALIZACIÓN OBLIGATORIA (APK) =======================
    1. Al abrir, compara la versión instalada con la última "Release" del repositorio en GitHub.
    2. Si hay una más nueva, bloquea la app hasta instalarla.
@@ -1613,7 +1753,7 @@ render();
   var urlApk = null, mostrando = false, ultimaRevision = 0, esperaPermiso = null, versionActual = 0;
 
   // Datos que se conservan entre versiones (cuadrantes editados en el Buscador)
-  var CONSERVAR = ['mebuc_edits_v1'];
+  var CONSERVAR = ['mebuc_edits_v1', 'mebuc_acceso'];
 
   function estado(txt, error){ var e=$('updEstado'); e.textContent = txt || ''; e.classList.toggle('err', !!error); }
   function barra(pct){ $('updBar').style.display = 'block'; $('updBar').firstElementChild.style.width = pct + '%'; }
