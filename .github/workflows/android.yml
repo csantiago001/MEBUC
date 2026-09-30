@@ -1,0 +1,69 @@
+name: Publicar actualización Android (APK)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'www/**'
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Verificar llave de firma
+        env:
+          KS: ${{ secrets.MEBUC_KEYSTORE_BASE64 }}
+          PW: ${{ secrets.MEBUC_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS" ] || [ -z "$PW" ]; then
+            echo "::error::Faltan los secretos MEBUC_KEYSTORE_BASE64 y MEBUC_KEYSTORE_PASSWORD"
+            exit 1
+          fi
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/mebuc.jks"
+
+      - name: Configurar repositorio de actualizaciones
+        run: echo "window.MEBUC_REPO = \"${{ github.repository }}\";" > www/config-actualizacion.js
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Copiar la web a Android
+        run: npx cap sync android
+
+      - name: Compilar APK firmada
+        working-directory: android
+        env:
+          MEBUC_KEYSTORE: ${{ runner.temp }}/mebuc.jks
+          MEBUC_KEYSTORE_PASSWORD: ${{ secrets.MEBUC_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=${{ github.run_number }}
+          cp app/build/outputs/apk/release/app-release.apk ../MEBUC.apk
+
+      - name: Publicar versión (Release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: MEBUC versión ${{ github.run_number }}
+          body: ${{ github.event.head_commit.message || 'Actualización de MEBUC' }}
+          files: MEBUC.apk
+          make_latest: true
