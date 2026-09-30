@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  // App nativa (APK / iOS con Capacitor) o WebView de Android
+  var nativo = !!window.Capacitor || location.protocol === 'capacitor:' || /; wv\)/.test(ua);
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if (nativo) document.documentElement.classList.add('is-native');
+  if (standalone || nativo) document.documentElement.classList.add('is-installed');
+  window.ES_NATIVO = nativo;
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f2027">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MEBUC">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<title>MEBUC — PIN y Buscador</title>
+
+<style>
+:root {
+  --azul:#1a3a6e;--azul2:#243f7a;--azul3:#1565c0;
+  --verde:#1b6e3e;--verde2:#22863a;
+  --rojo:#b71c1c;--naranja:#e65100;
+  --gris0:#f4f6f9;--gris1:#eaecf2;--gris2:#d8dce8;
+  --gris3:#b0b8cc;--gris4:#7a8499;
+  --texto:#1a1f2e;--texto2:#3d4560;--blanco:#ffffff;
+  --radio:10px;--radio2:16px;
+  --sombra:0 2px 12px rgba(26,58,110,.10);
+  --trans:.18s cubic-bezier(.4,0,.2,1);
+  --tabbar-h:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:linear-gradient(140deg,#0f2027 0%,#1a3a6e 55%,#2c5364 100%);
+  min-height:100vh;padding:16px;
+  padding-bottom:calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom,0px));
+  color:var(--texto);font-size:15px;line-height:1.6;
+}
+.app{max-width:980px;margin:0 auto;background:var(--blanco);border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.35);overflow:hidden;overflow:clip;}
+
+/* Portón de instalación obligatoria (solo en navegador web) */
+html:not(.is-installed) .app,html:not(.is-installed) .tabbar{display:none;}
+#install-gate{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 24px;background:linear-gradient(140deg,#0f2027 0%,#1a3a6e 55%,#2c5364 100%);color:#fff;}
+html:not(.is-installed) #install-gate{display:flex;}
+#install-gate .gate-icon{width:72px;height:72px;background:rgba(255,255,255,.12);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:22px;border:1px solid rgba(255,255,255,.18);}
+#install-gate h1{font-size:1.25em;margin-bottom:10px;}
+#install-gate p{color:rgba(255,255,255,.75);font-size:.92em;max-width:320px;margin-bottom:22px;line-height:1.5;}
+#install-gate button{background:#f9a825;color:#0f2027;border:none;padding:14px 30px;border-radius:12px;font-weight:700;font-size:.95em;cursor:pointer;display:none;}
+#install-gate.blocked h1{color:#ff8a65;}
+
+/* Header */
+header.app-header{background:linear-gradient(120deg,#0f2027 0%,#1a3a6e 60%,#2c5364 100%);padding:28px 28px 22px;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;}
+header.app-header::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 80% 50%,rgba(255,255,255,.07) 0%,transparent 70%);pointer-events:none;}
+.header-icon{width:52px;height:52px;background:rgba(255,255,255,.12);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:1px solid rgba(255,255,255,.18);overflow:hidden;}
+.header-text h1{font-size:1.4em;font-weight:700;color:#fff;letter-spacing:.3px;}
+.header-text p{font-size:.85em;color:rgba(255,255,255,.7);margin-top:2px;}
+
+/* Barra de pestañas inferior */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:1500;display:flex;justify-content:center;gap:8px;
+  background:rgba(15,32,39,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-top:1px solid rgba(255,255,255,.1);padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));}
+.tab{flex:1;min-width:0;max-width:220px;height:48px;white-space:nowrap;border:none;border-radius:14px;background:transparent;color:#aac4d8;
+  font-family:inherit;font-size:.9em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all var(--trans);}
+.tab .tab-ico{font-size:1.25em;}
+@media(max-width:360px){.tab{font-size:.8em;gap:4px;}}
+.tab.active{background:linear-gradient(135deg,var(--azul),var(--azul3));color:#fff;box-shadow:0 4px 14px rgba(21,101,192,.35);}
+
+/* Secciones */
+.section{padding:22px 24px;border-bottom:1px solid var(--gris1);}
+.section:last-child{border-bottom:none;}
+.section-title{display:flex;align-items:center;gap:10px;font-size:1em;font-weight:700;color:var(--azul);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--gris1);}
+.section-title .icon{width:30px;height:30px;background:linear-gradient(135deg,var(--azul),var(--azul3));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;flex-shrink:0;}
+
+/* Formulario */
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:.78em;font-weight:700;color:var(--azul2);letter-spacing:.6px;text-transform:uppercase;margin-bottom:5px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 13px;border:1.5px solid var(--gris2);border-radius:var(--radio);font-size:.93em;font-family:inherit;background:var(--blanco);color:var(--texto);transition:border-color var(--trans),box-shadow var(--trans);}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--azul3);box-shadow:0 0 0 3px rgba(21,101,192,.14);}
+.form-group textarea{resize:vertical;min-height:76px;}
+.hint{font-size:.76em;color:var(--gris4);font-style:italic;margin-top:4px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.input-btn{display:flex;gap:8px;}
+.input-btn input{flex:1;}
+
+/* Event picker */
+.event-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.event-card{background:var(--gris0);border:1.5px solid var(--gris2);border-radius:var(--radio2);padding:14px 16px;transition:border-color var(--trans),box-shadow var(--trans);}
+.event-card:hover{border-color:var(--azul3);box-shadow:var(--sombra);}
+.event-card-label{font-size:.78em;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.event-card select{width:100%;padding:9px 11px;border:1.5px solid var(--azul);border-radius:8px;background:var(--blanco);font-size:.88em;font-weight:600;color:var(--azul);cursor:pointer;}
+.event-preview{background:linear-gradient(135deg,#e8f0fe,#d4e4fc);border:1.5px solid var(--azul3);border-radius:var(--radio);padding:11px 16px;font-size:.88em;font-weight:600;color:var(--azul);text-align:center;min-height:38px;display:flex;align-items:center;justify-content:center;}
+
+/* Datetime */
+.dt-wrap{position:relative;}
+.dt-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1.1em;pointer-events:none;z-index:2;}
+.dt-wrap input{padding-left:38px!important;font-weight:600;color:var(--azul2);background:var(--gris0);}
+.dt-wrap input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.65;transform:scale(1.1);}
+
+/* Item cards */
+.item-card{background:var(--blanco);border:1.5px solid var(--gris2);border-radius:var(--radio2);padding:14px 16px;margin-bottom:10px;transition:border-color var(--trans),box-shadow var(--trans);}
+.item-card:hover{border-color:var(--azul3);box-shadow:var(--sombra);}
+.item-card-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--gris2);font-weight:700;color:var(--azul);font-size:.9em;}
+.item-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;gap:12px;background:var(--gris0);border:1.5px solid var(--azul);border-radius:var(--radio2);padding:12px 16px;margin-bottom:12px;}
+.toggle{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-track{position:absolute;cursor:pointer;inset:0;background:#cdd4e0;border-radius:26px;transition:.25s;}
+.toggle-track::before{content:'';position:absolute;width:20px;height:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.22);}
+.toggle input:checked+.toggle-track{background:linear-gradient(135deg,var(--verde2),var(--verde));}
+.toggle input:checked+.toggle-track::before{transform:translateX(22px);}
+.toggle-lbl{font-weight:600;color:var(--azul);font-size:.92em;}
+
+/* Aspecto editor */
+.aspecto-box{background:linear-gradient(135deg,#fffde7,#fff9c4);border:1.5px solid #f9a825;border-radius:var(--radio2);padding:14px 16px;margin-bottom:12px;}
+.aspecto-box label{display:block;font-weight:700;color:#5a3e00;font-size:.78em;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.aspecto-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.aspectos-toolbar{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* SPOA */
+.spoa-block{margin-bottom:14px;}
+.spoa-block-header{background:linear-gradient(135deg,#e8f0fe,#d4e4fc);border:1.5px solid var(--azul3);border-radius:var(--radio);padding:9px 14px;font-size:.85em;font-weight:700;color:var(--azul);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.spoa-block-header.victimario-header{background:linear-gradient(135deg,#fce4ec,#f8bbd0);border-color:#c2185b;color:#880e4f;}
+.spoa-col-headers{display:grid;grid-template-columns:70px 1fr 110px 30px;gap:8px;margin-bottom:4px;padding:0 2px;}
+.spoa-col-headers span{font-size:.72em;font-weight:700;color:var(--gris4);text-transform:uppercase;letter-spacing:.5px;}
+.spoa-row{display:grid;grid-template-columns:70px 1fr 110px 30px;gap:8px;margin-bottom:6px;}
+.spoa-row input{padding:8px 10px;border:1.5px solid var(--gris2);border-radius:8px;font-size:.88em;transition:border-color var(--trans);min-width:0;}
+.spoa-row input:focus{outline:none;border-color:var(--azul3);}
+.spoa-add-row{display:flex;gap:8px;margin-top:4px;}
+.spoa-add-btn{padding:6px 14px;border-radius:8px;border:1.5px dashed var(--azul3);background:transparent;color:var(--azul);font-size:.8em;font-weight:700;cursor:pointer;transition:all var(--trans);}
+.spoa-add-btn:hover{background:var(--gris0);}
+.spoa-add-btn.victimario-add{border-color:#c2185b;color:#880e4f;}
+.spoa-add-btn.victimario-add:hover{background:#fce4ec;}
+
+.badge{display:inline-block;background:var(--azul);color:#fff;padding:2px 9px;border-radius:12px;font-size:.72em;font-weight:700;margin-left:6px;}
+
+/* Botones */
+.btn{padding:9px 18px;border-radius:var(--radio);border:none;cursor:pointer;font-size:.88em;font-weight:700;font-family:inherit;transition:all var(--trans);display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:linear-gradient(135deg,var(--azul),var(--azul3));color:#fff;box-shadow:0 3px 12px rgba(26,58,110,.25);}
+.btn-danger{background:linear-gradient(135deg,#c62828,var(--rojo));color:#fff;padding:6px 12px;font-size:.78em;box-shadow:0 2px 8px rgba(183,28,28,.2);}
+.btn-success{background:linear-gradient(135deg,var(--verde),var(--verde2));color:#fff;width:100%;justify-content:center;padding:15px;font-size:1em;letter-spacing:.3px;box-shadow:0 4px 16px rgba(27,110,62,.3);}
+.btn-copy{background:linear-gradient(135deg,#00695c,#00897b);color:#fff;padding:12px;flex:1;justify-content:center;box-shadow:0 3px 12px rgba(0,105,92,.25);}
+.btn-copy-sm{background:linear-gradient(135deg,#00695c,#00897b);color:#fff;padding:4px 10px;font-size:.72em;box-shadow:0 2px 8px rgba(0,105,92,.2);}
+.btn-copy-md{background:linear-gradient(135deg,#00695c,#00897b);color:#fff;box-shadow:0 2px 8px rgba(0,105,92,.2);}
+.btn-whatsapp{background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047);color:#fff;padding:12px;flex:1;justify-content:center;box-shadow:0 3px 12px rgba(37,211,102,.3);display:inline-flex;align-items:center;gap:7px;}
+.btn-new{background:linear-gradient(135deg,#bf360c,var(--naranja));color:#fff;padding:12px;flex:1;justify-content:center;box-shadow:0 3px 12px rgba(230,81,0,.25);}
+.btn-add{background:linear-gradient(135deg,#e65100,#ef6c00);color:#fff;padding:8px 16px;font-size:.85em;box-shadow:0 2px 8px rgba(230,81,0,.22);}
+.btn-edit-sm{background:linear-gradient(135deg,#e65100,#ef6c00);color:#fff;padding:4px 10px;font-size:.72em;}
+.btn-ghost{background:var(--gris0);color:var(--azul);border:1.5px solid var(--gris2);}
+.wa-icon{width:17px;height:17px;fill:#fff;flex-shrink:0;}
+
+/* Output */
+.output-wrap{background:linear-gradient(135deg,#f4f6f9,#eaecf2);padding:22px 24px;}
+.output-box{background:var(--blanco);border:2px solid var(--azul);border-radius:var(--radio2);padding:16px;font-family:'Courier New',monospace;font-size:.88em;white-space:pre-wrap;line-height:1.65;min-height:200px;max-height:560px;overflow-y:auto;box-shadow:inset 0 2px 8px rgba(0,0,0,.04);color:var(--texto);}
+.output-box:focus{outline:2px solid #f9a825;}
+.action-bar{display:flex;gap:10px;margin-top:14px;}
+
+/* Toast */
+.toast{position:fixed;bottom:calc(var(--tabbar-h) + 20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(30px);background:linear-gradient(135deg,var(--verde),var(--verde2));color:#fff;padding:11px 28px;border-radius:30px;font-weight:700;box-shadow:0 8px 28px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:all .28s;z-index:4000;font-size:.9em;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* PWA */
+#install-banner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:2000;background:linear-gradient(135deg,#0f2027,#1a3a6e);border-top:3px solid #f9a825;padding:14px 18px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 24px rgba(0,0,0,.5);}
+#install-banner .ib-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+#install-banner .ib-ico img{width:48px;height:48px;border-radius:12px;}
+#install-banner .ib-t1{font-size:14px;font-weight:700;color:#f9a825;}
+#install-banner .ib-t2{font-size:12px;color:#aac4d8;margin-top:2px;}
+#install-banner .ib-btns{display:flex;gap:10px;}
+#install-banner .ib-btns button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
+.ib-ok{background:#f9a825;color:#0f2027;}
+.ib-no{background:#1e3a5f;color:#aac4d8;}
+#ios-hint{display:none;position:fixed;bottom:0;left:0;right:0;z-index:2000;background:linear-gradient(135deg,#0f2027,#1a3a6e);border-top:3px solid #f9a825;padding:16px 18px calc(16px + env(safe-area-inset-bottom,0px));text-align:center;box-shadow:0 -4px 24px rgba(0,0,0,.5);}
+#ios-hint p{font-size:13px;color:#e0eaf5;margin-bottom:6px;line-height:1.6;}
+#ios-hint .ios-arr{font-size:26px;color:#f9a825;display:block;margin-bottom:4px;}
+#ios-hint button{background:#1e3a5f;color:#aac4d8;border:none;border-radius:8px;padding:8px 24px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px;}
+
+.dev-footer{text-align:center;padding:13px;font-size:.76em;color:var(--gris4);border-top:1px solid var(--gris1);background:var(--gris0);}
+.dev-footer strong{color:var(--azul);}
+
+/* ================= BUSCADOR (estilos aislados en .vb) ================= */
+.vb{
+  --bg:#f4f6f8;--panel:#ffffff;--border:#e3e7eb;--text:#1c2530;--text-dim:#6b7684;--text-faint:#9aa4b0;
+  --accent:#2563eb;--accent-soft:#eaf1ff;--red:#e0392b;--radius:14px;
+  --d1:#2563eb;--d1-soft:#eaf1ff;--d2:#0f9d58;--d2-soft:#e7f8ef;--d3:#e8710a;--d3-soft:#fff1e3;--d4:#8a3ffc;--d4-soft:#f2eaff;
+  background:var(--bg);color:var(--text);min-height:60vh;
+}
+.vb .search-bar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);padding:14px 16px 12px;}
+.vb .search-wrap{position:relative;max-width:900px;margin:0 auto;}
+.vb #q{width:100%;padding:13px 42px 13px 40px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:15.5px;outline:none;font-family:inherit;transition:border-color .15s,background .15s;}
+.vb #q:focus{border-color:var(--accent);background:var(--panel);}
+.vb .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text-faint);pointer-events:none;}
+.vb .clear-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--border);border:none;color:var(--text-dim);width:24px;height:24px;border-radius:50%;font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center;}
+.vb .bmain{padding:14px 16px 30px;max-width:900px;margin:0 auto;}
+.vb .crumbbar{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:14px;font-size:13px;}
+.vb .crumb{color:var(--accent);font-weight:700;cursor:pointer;padding:3px 4px;border-radius:6px;}
+.vb .crumb:hover{background:var(--accent-soft);}
+.vb .crumb.current{color:var(--text);cursor:default;}
+.vb .crumb.current:hover{background:none;}
+.vb .crumb-sep{color:var(--text-faint);}
+.vb .chip-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.vb .chip-btn{padding:10px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--panel);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;}
+.vb .chip-btn .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+.vb .chip-btn:active{transform:scale(.98);}
+.vb .cai-list{display:flex;flex-direction:column;gap:8px;}
+.vb .cai-item{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1.5px solid var(--border);border-radius:12px;padding:13px 15px;cursor:pointer;}
+.vb .cai-item:active{transform:scale(.99);}
+.vb .cai-item .nm{font-weight:800;font-size:14.5px;}
+.vb .cai-item .cnt{font-size:11.5px;color:var(--text-faint);font-weight:600;margin-top:2px;}
+.vb .cai-item .arrow{color:var(--text-faint);font-size:18px;}
+.vb .section-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin:0 0 10px 2px;}
+.vb .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(20,30,45,.03);position:relative;}
+.vb .breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-faint);margin-bottom:8px;font-weight:600;}
+.vb .dtag{padding:2px 7px;border-radius:6px;font-weight:800;font-size:10.5px;}
+.vb .dtag.d1{background:var(--d1-soft);color:var(--d1);}
+.vb .dtag.d2{background:var(--d2-soft);color:var(--d2);}
+.vb .dtag.d3{background:var(--d3-soft);color:var(--d3);}
+.vb .dtag.d4{background:var(--d4-soft);color:var(--d4);}
+.vb .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.vb .cai-name{font-size:15.5px;font-weight:800;color:var(--text);line-height:1.3;}
+.vb .cai-label{font-weight:700;color:var(--text-faint);font-size:11px;display:block;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+.vb .right-controls{display:flex;align-items:center;gap:6px;flex:none;}
+.vb .codigo-badge{font-family:"SFMono-Regular",Consolas,monospace;font-weight:800;font-size:13px;color:var(--accent);background:var(--accent-soft);padding:5px 10px;border-radius:8px;white-space:nowrap;}
+.vb .edit-btn{border:none;background:var(--bg);color:var(--text-dim);width:30px;height:30px;border-radius:8px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.vb .edit-btn:active{transform:scale(.94);}
+.vb .barrios{display:flex;flex-wrap:wrap;gap:6px;}
+.vb .barrio-pill{font-size:12.5px;padding:4px 10px;border-radius:7px;background:var(--bg);border:1px solid var(--border);color:var(--text);}
+.vb .barrio-pill.hit{background:#fff1a8;border-color:#f0d868;color:#4a3c00;}
+.vb .barrio-empty{font-size:12.5px;color:var(--text-faint);font-style:italic;}
+.vb .add-btn{width:100%;padding:13px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;font-family:inherit;}
+.vb mark{background:#ffd75e;color:#241d00;border-radius:3px;padding:0 1px;}
+.vb .empty-state{text-align:center;color:var(--text-faint);padding:60px 20px;font-size:14px;}
+.vb .empty-state .big{font-size:36px;margin-bottom:12px;}
+.vb .meta-bar{color:var(--text-faint);font-size:11.5px;margin-bottom:10px;}
+.vb .bfooter{text-align:center;color:var(--text-faint);font-size:11px;padding:14px 16px 24px;}
+.vb .bfooter a{color:var(--text-dim);text-decoration:underline;cursor:pointer;}
+.vb .overlay{position:fixed;inset:0;background:rgba(15,20,28,.5);display:none;align-items:flex-end;justify-content:center;z-index:3000;}
+.vb .overlay.open{display:flex;}
+.vb .modal{background:var(--panel);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow-y:auto;}
+@media (min-width:560px){.vb .overlay{align-items:center;}.vb .modal{border-radius:16px;}}
+.vb .modal h2{font-size:16px;margin:0 0 4px;font-weight:800;}
+.vb .modal .modal-sub{font-size:12px;color:var(--text-dim);margin-bottom:16px;}
+.vb .field{margin-bottom:14px;}
+.vb .field label{display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;}
+.vb .field input,.vb .field textarea{width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:14.5px;color:var(--text);font-family:inherit;outline:none;}
+.vb .field input:focus,.vb .field textarea:focus{border-color:var(--accent);}
+.vb .field textarea{min-height:120px;resize:vertical;line-height:1.5;}
+.vb .field .helptext{font-size:11px;color:var(--text-faint);margin-top:5px;}
+.vb .modal-actions{display:flex;gap:10px;margin-top:18px;}
+.vb .bbtn{flex:1;padding:13px;border-radius:11px;border:none;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+.vb .bbtn.secondary{background:var(--bg);color:var(--text);}
+.vb .bbtn.primary{background:var(--accent);color:#fff;}
+.vb .confirm-modal .modal{max-width:380px;}
+.vb .confirm-icon{font-size:30px;text-align:center;margin-bottom:8px;}
+.vb .confirm-text{text-align:center;font-size:14.5px;color:var(--text);line-height:1.45;margin-bottom:4px;}
+
+/* ===== Actualización obligatoria (APK) ===== */
+#upd{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:24px;
+  background:linear-gradient(140deg,#0f2027 0%,#1a3a6e 55%,#2c5364 100%);color:#fff;text-align:center;}
+#upd.open{display:flex;}
+#upd .upd-card{width:100%;max-width:380px;}
+#upd .upd-ico{width:76px;height:76px;margin:0 auto 18px;border-radius:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:38px;}
+#upd h1{font-size:1.3em;margin-bottom:6px;}
+#upd .upd-ver{font-size:.85em;color:#f9a825;font-weight:700;margin-bottom:12px;}
+#upd .upd-txt{font-size:.9em;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:14px;}
+#upd .upd-notas{text-align:left;font-size:.82em;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;margin-bottom:16px;max-height:26vh;overflow:auto;white-space:pre-wrap;color:#dce8f5;}
+#upd .upd-notas:empty{display:none;}
+#upd .upd-btn{width:100%;background:#f9a825;color:#0f2027;border:none;padding:15px;border-radius:12px;font-weight:800;font-size:1em;cursor:pointer;font-family:inherit;}
+#upd .upd-btn:disabled{opacity:.55;}
+#upd .upd-bar{height:10px;border-radius:10px;background:rgba(255,255,255,.15);overflow:hidden;margin:16px 0 8px;display:none;}
+#upd .upd-bar div{height:100%;width:0;background:linear-gradient(90deg,#f9a825,#ffd54f);transition:width .2s;}
+#upd .upd-estado{font-size:.85em;color:#aac4d8;min-height:1.4em;}
+#upd .upd-estado.err{color:#ff8a80;}
+
+.hidden{display:none!important;}
+
+@media(max-width:600px){
+  body{padding:0;padding-bottom:calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom,0px));}
+  .app{border-radius:0;box-shadow:none;min-height:100vh;}
+  header.app-header{padding:calc(18px + env(safe-area-inset-top,0px)) 16px 14px;}
+  .header-icon{width:44px;height:44px;}
+  .header-text h1{font-size:1.2em;}
+  .row2,.row3,.event-grid{grid-template-columns:1fr;}
+  .action-bar{flex-direction:column;}
+  .section{padding:16px;}
+  .output-wrap{padding:16px;}
+  .spoa-row,.spoa-col-headers{grid-template-columns:56px 1fr 84px 30px;gap:6px;}
+}
+</style>
+</head>
+<body>
+
+<div id="install-gate">
+  <div class="gate-icon">📲</div>
+  <h1 id="gate-title">Instala la aplicación</h1>
+  <p id="gate-text">Para usar el Generador de PIN necesitas instalar la aplicación en tu dispositivo.</p>
+  <button id="gate-btn">Instalar aplicación</button>
+</div>
+
+<div class="app">
+
+  <header class="app-header">
+    <div class="header-icon"><img src="icon-192.png" alt="Logo" style="width:100%;height:100%;object-fit:cover;" onerror="this.replaceWith(document.createTextNode('🚓'))"></div>
+    <div class="header-text">
+      <h1 id="appTitle">Generador de PIN</h1>
+      <p id="appSub">Policía Metropolitana de Bucaramanga</p>
+    </div>
+  </header>
+
+  <!-- ===================== VISTA: GENERADOR DE PIN ===================== -->
+  <div id="viewPin" class="view">
+
+  <!-- TIPO DE EVENTO -->
+  <div class="section">
+    <div class="section-title"><div class="icon">📌</div>Tipo de evento</div>
+    <div class="event-grid">
+      <div class="event-card">
+        <div class="event-card-label">🥇 Servicio ORO 20</div>
+        <select id="selectOro20">
+          <option value="">— Seleccionar evento —</option>
+          <option value="oro_lesionado_af">LESIONADO CON ARMA DE FUEGO</option>
+          <option value="oro_lesionado_cp">LESIONADO CON ARMA CORTOPUNZANTE</option>
+          <option value="oro_lesionado_at">LESIONADO POR ARMA TRAUMÁTICA</option>
+          <option value="oro_deceso">DECESO HOSPITALARIO</option>
+          <option value="oro_homicidio_af">HOMICIDIO CON ARMA DE FUEGO</option>
+          <option value="oro_homicidio_cp">HOMICIDIO CON ARMA CORTOPUNZANTE</option>
+        </select>
+      </div>
+      <div class="event-card">
+        <div class="event-card-label">🕵️ Contrainteligencia</div>
+        <select id="selectContra">
+          <option value="">— Seleccionar evento —</option>
+          <option value="contra_verificacion_x">VERIFICACIÓN PUBLICACIÓN RED SOCIAL X</option>
+          <option value="contra_policial_lesionado">POLICIAL LESIONADO EN PROCESAMIENTO</option>
+          <option value="contra_servicio_policia">SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA</option>
+        </select>
+      </div>
+    </div>
+    <div class="event-preview" id="eventPreview">Selecciona un evento de cualquiera de los dos menús</div>
+  </div>
+
+  <!-- DATOS DEL CASO -->
+  <div class="section" id="sectionDatos">
+    <div class="section-title"><div class="icon">📝</div>Datos del caso</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>Fecha del hecho</label>
+        <div class="dt-wrap"><span class="dt-icon">📅</span><input type="date" id="fecha"></div>
+      </div>
+      <div class="form-group">
+        <label>Hora del hecho</label>
+        <div class="dt-wrap"><span class="dt-icon">🕐</span><input type="time" id="hora"></div>
+      </div>
+    </div>
+    <div class="form-group" id="groupMunicipio">
+      <label>Municipio</label>
+      <select id="municipio">
+        <option value="BUCARAMANGA">BUCARAMANGA</option>
+        <option value="FLORIDABLANCA">FLORIDABLANCA</option>
+        <option value="GIRÓN">GIRÓN</option>
+        <option value="PIEDECUESTA">PIEDECUESTA</option>
+        <option value="LEBRIJA">LEBRIJA</option>
+        <option value="LOS SANTOS">LOS SANTOS</option>
+        <option value="MESA DE LOS SANTOS">MESA DE LOS SANTOS</option>
+        <option value="PESCADERO">PESCADERO</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Lugar exacto del hecho</label>
+      <textarea id="lugar" placeholder="Ej: asentamiento humano las guacamayas casa 39 del Barrio Bucaramanga"></textarea>
+      <div class="hint">Dirección completa tal como debe quedar en el PIN.</div>
+    </div>
+  </div>
+
+  <!-- VÍCTIMAS -->
+  <div class="section" id="sectionVictimas">
+    <div class="section-title"><div class="icon">👤</div><span id="tituloVictimas">Víctimas</span></div>
+    <div id="victimasContainer"></div>
+    <button class="btn btn-add" onclick="agregarVictima()">＋ Agregar víctima adicional</button>
+  </div>
+
+  <!-- VICTIMARIOS -->
+  <div class="section hidden" id="sectionVictimarios">
+    <div class="section-title"><div class="icon">🦹</div>Victimarios</div>
+    <div class="toggle-row">
+      <label class="toggle">
+        <input type="checkbox" id="toggleVictimarios" onchange="toggleVictimariosSection()">
+        <span class="toggle-track"></span>
+      </label>
+      <span class="toggle-lbl">¿Desea agregar victimarios?</span>
+    </div>
+    <div id="victimariosContainer" class="hidden"></div>
+    <button class="btn btn-add hidden" id="btnAgregarVictimario" onclick="agregarVictimario()">＋ Agregar victimario</button>
+  </div>
+
+  <!-- ASPECTOS -->
+  <div class="section hidden" id="sectionAspectos">
+    <div class="section-title"><div class="icon">⚠️</div>Aspectos de interés</div>
+    <div id="aspectosList"></div>
+    <div class="aspecto-box hidden" id="aspectoInputBox">
+      <label id="aspectoInputLabel">✏️ Escribe el aspecto de interés</label>
+      <textarea id="aspectoInputText" style="width:100%;padding:10px;border:1.5px solid #f9a825;border-radius:8px;min-height:110px;font-family:inherit;font-size:.9em;" placeholder="Escribe aquí el aspecto de interés..."></textarea>
+      <div class="aspecto-actions">
+        <button class="btn btn-add" onclick="guardarAspecto()">💾 Guardar</button>
+        <button class="btn btn-copy-md" onclick="copiarAspectoEditor()">📋 Copiar lo escrito</button>
+        <button class="btn btn-danger" style="padding:9px 16px;font-size:.85em;" onclick="cancelarAspecto()">Cancelar</button>
+      </div>
+    </div>
+    <div class="aspectos-toolbar">
+      <button class="btn btn-add" id="btnAgregarAspecto" onclick="mostrarInputAspecto()">＋ Agregar aspecto de interés</button>
+      <button class="btn btn-copy-md hidden" id="btnCopiarAspectos" onclick="copiarTodosAspectos()">📋 Copiar todos</button>
+    </div>
+  </div>
+
+  <!-- CAPTURADOS -->
+  <div class="section hidden" id="sectionCapturados">
+    <div class="section-title"><div class="icon">🚔</div>Capturados <span class="badge" id="badgeCapturados">0</span></div>
+    <div class="hint" style="margin-bottom:10px;">El número de capturas aparece automáticamente en el encabezado del PIN.</div>
+    <div id="capturadosContainer"></div>
+    <button class="btn btn-add" onclick="agregarCapturado()">＋ Agregar capturado</button>
+  </div>
+
+  <!-- SPOA -->
+  <div class="section hidden" id="sectionSPOA">
+    <div class="section-title"><div class="icon">📋</div>Antecedentes SPOA</div>
+    <div class="spoa-block" id="spoaBlockVictima">
+      <div class="spoa-block-header">👤 Antecedentes SPOA — <strong style="margin-left:4px;">Víctima</strong></div>
+      <div id="spoContainerVictima"></div>
+      <div class="spoa-add-row"><button class="spoa-add-btn" onclick="agregarSPO('victima')">＋ Agregar anotación a la Víctima</button></div>
+    </div>
+    <div class="spoa-block hidden" id="spoaBlockVictimario">
+      <div class="spoa-block-header victimario-header">🦹 Antecedentes SPOA — <strong style="margin-left:4px;">Victimario</strong></div>
+      <div id="spoContainerVictimario"></div>
+      <div class="spoa-add-row"><button class="spoa-add-btn victimario-add" onclick="agregarSPO('victimario')">＋ Agregar anotación al Victimario</button></div>
+    </div>
+  </div>
+
+  <!-- ZAP Y MODALIDAD -->
+  <div class="section hidden" id="sectionZap">
+    <div class="section-title"><div class="icon">📍</div>ZAP y Modalidad</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>Zona de atención (ZAP)</label>
+        <div class="input-btn">
+          <input type="text" id="zapNumero" placeholder="Ej: ZAP-01">
+          <button class="btn btn-ghost" type="button" onclick="mostrarVista('buscador')" title="Buscar en el Buscador MEBUC">🔍</button>
+        </div>
+        <div class="hint">Toca 🔍 para buscar el cuadrante por barrio y cargarlo con 📝.</div>
+      </div>
+      <div class="form-group">
+        <label>Modalidad</label>
+        <select id="modalidad">
+          <option value="POR ESTABLECER">POR ESTABLECER</option>
+          <option value="HURTO">HURTO</option>
+          <option value="SICARIATO">SICARIATO</option>
+          <option value="AJUSTE DE CUENTAS">AJUSTE DE CUENTAS</option>
+          <option value="RIÑA">RIÑA</option>
+          <option value="INTOLERANCIA SOCIAL">INTOLERANCIA SOCIAL</option>
+          <option value="VIOLENCIA INTRAFAMILIAR">VIOLENCIA INTRAFAMILIAR</option>
+          <option value="TRÁFICO DE ESTUPEFACIENTES">TRÁFICO DE ESTUPEFACIENTES</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERAR -->
+  <div class="section">
+    <button class="btn btn-success" onclick="generarPIN()">⚡ Generar PIN</button>
+  </div>
+
+  <!-- SALIDA -->
+  <div class="output-wrap">
+    <div class="section-title" style="border-bottom:none;margin-bottom:8px;">
+      <div class="icon" style="background:linear-gradient(135deg,var(--verde),var(--verde2));">✅</div>PIN listo para WhatsApp
+    </div>
+    <p style="font-size:.8em;color:var(--gris4);margin-bottom:10px;">Toca el texto para editar si necesitas ajustes.</p>
+    <div class="output-box" id="output" contenteditable="true">El PIN generado aparecerá aquí...</div>
+    <div class="action-bar">
+      <button class="btn btn-copy" onclick="copiarPIN()">📋 Copiar</button>
+      <button class="btn btn-whatsapp" onclick="compartirWhatsApp()">
+        <svg class="wa-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Compartir WhatsApp
+      </button>
+      <button class="btn btn-new" onclick="nuevo()">🔄 Nuevo</button>
+    </div>
+  </div>
+
+  </div><!-- /viewPin -->
+
+  <!-- ===================== VISTA: BUSCADOR ===================== -->
+  <div id="viewBuscador" class="view vb hidden">
+    <div class="search-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="q" type="text" placeholder="Barrio, código (ej. 1-1), CAI, estación..." autocomplete="off">
+        <button class="clear-btn" id="clearBtn">✕</button>
+      </div>
+    </div>
+
+    <div class="bmain" id="bMain"></div>
+
+    <div class="bfooter">
+      <span id="footerInfo"></span><br>
+      <a id="resetLink">↺ Restablecer ediciones locales</a>
+    </div>
+
+    <div class="overlay" id="editOverlay">
+      <div class="modal">
+        <h2 id="editTitle">Editar cuadrante</h2>
+        <div class="modal-sub" id="editSub"></div>
+        <div class="field">
+          <label>Código del cuadrante</label>
+          <input id="editCodigo" type="text" placeholder="ej. 1-29">
+        </div>
+        <div class="field">
+          <label>Barrios (uno por línea)</label>
+          <textarea id="editBarrios" placeholder="Barrio 1&#10;Barrio 2&#10;Barrio 3"></textarea>
+          <div class="helptext">Escribe un barrio por línea.</div>
+        </div>
+        <div class="modal-actions">
+          <button class="bbtn secondary" id="editCancelBtn">Cancelar</button>
+          <button class="bbtn primary" id="editSaveBtn">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay confirm-modal" id="confirmOverlay">
+      <div class="modal">
+        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-text" id="confirmText"></div>
+        <div class="modal-actions">
+          <button class="bbtn secondary" id="confirmCancelBtn">Cancelar</button>
+          <button class="bbtn primary" id="confirmOkBtn">Sí, confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /viewBuscador -->
+
+  <div class="dev-footer">Desarrollado por <strong>SI. Carlos Santiago</strong> — MEBUC © 2026<span id="appVersion"></span></div>
+</div>
+
+<!-- Barra de pestañas -->
+<nav class="tabbar">
+  <button class="tab active" data-view="pin" onclick="mostrarVista('pin')"><span class="tab-ico">⚡</span>PIN</button>
+  <button class="tab" data-view="buscador" onclick="mostrarVista('buscador')"><span class="tab-ico">🔍</span>Buscador</button>
+  <button class="tab" data-view="ia" onclick="abrirIaPolicia()"><span class="tab-ico">🤖</span>IA Policía</button>
+</nav>
+
+<!-- Banner Android (solo web) -->
+<div id="install-banner">
+  <div class="ib-row">
+    <div class="ib-ico"><img src="icon-192.png" alt="PIN" onerror="this.style.display='none'"></div>
+    <div><div class="ib-t1">Instala MEBUC</div><div class="ib-t2">Úsala como app nativa desde tu pantalla de inicio.</div></div>
+  </div>
+  <div class="ib-btns">
+    <button class="ib-ok" onclick="instalarApp()">📲 Instalar</button>
+    <button class="ib-no" onclick="cerrarBanner()">Ahora no</button>
+  </div>
+</div>
+<div id="ios-hint">
+  <span class="ios-arr">↓</span>
+  <p>Para instalar en iPhone o iPad:<br>Toca <strong>Compartir</strong> □↑ en Safari<br>luego <strong>"Agregar a pantalla de inicio"</strong></p>
+  <button onclick="cerrarIosHint()">Entendido</button>
+</div>
+
+<!-- Actualización obligatoria (solo APK Android) -->
+<div id="upd" role="dialog" aria-modal="true">
+  <div class="upd-card">
+    <div class="upd-ico">⬆️</div>
+    <h1>Nueva versión disponible</h1>
+    <div class="upd-ver" id="updVer"></div>
+    <div class="upd-txt" id="updTxt">Debes instalar la actualización para seguir usando MEBUC.</div>
+    <div class="upd-notas" id="updNotas"></div>
+    <button class="upd-btn" id="updBtn">📲 Instalar actualización</button>
+    <div class="upd-bar" id="updBar"><div></div></div>
+    <div class="upd-estado" id="updEstado"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ Copiado al portapapeles</div>
+
+<script>
+/* ======================= UTILIDADES COMPARTIDAS ======================= */
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+let toastTimer=null;
+function mostrarToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// Copia texto con respaldo para WebView / navegadores antiguos
+function copiarTexto(texto,msg){
+  msg=msg||'✅ Copiado al portapapeles';
+  if(!texto){mostrarToast('⚠️ No hay nada para copiar');return;}
+  const respaldo=()=>{
+    const ta=document.createElement('textarea');
+    ta.value=texto;ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:-1000px;left:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();ta.setSelectionRange(0,texto.length);
+    let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+    document.body.removeChild(ta);
+    mostrarToast(ok?msg:'⚠️ No se pudo copiar');
+  };
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(texto).then(()=>mostrarToast(msg)).catch(respaldo);
+  }else respaldo();
+}
+
+/* ======================= IA POLICÍA ======================= */
+const URL_IA_POLICIA='https://app.ia.policia.gov.co/login';
+function abrirIaPolicia(){
+  const C=window.Capacitor;
+  if(C&&C.getPlatform&&C.getPlatform()==='android'){
+    // En la APK se abre una pantalla nativa en modo escritorio con cámara y micrófono
+    C.nativePromise('IaPolicia','abrir',{}).catch(()=>{window.location.href=URL_IA_POLICIA;});
+    return;
+  }
+  // iPhone / web: se abre en el navegador
+  window.open(URL_IA_POLICIA,'_blank');
+}
+
+/* ======================= PESTAÑAS ======================= */
+const scrollPorVista={pin:0,buscador:0};
+let vistaActual='pin';
+function mostrarVista(v){
+  if(v!=='pin'&&v!=='buscador')v='pin';
+  scrollPorVista[vistaActual]=window.scrollY;
+  vistaActual=v;
+  document.getElementById('viewPin').classList.toggle('hidden',v!=='pin');
+  document.getElementById('viewBuscador').classList.toggle('hidden',v!=='buscador');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+  document.getElementById('appTitle').textContent=v==='pin'?'Generador de PIN':'Buscador MEBUC';
+  document.getElementById('appSub').textContent=v==='pin'?'Policía Metropolitana de Bucaramanga':'Distritos · Estaciones · CAI · Barrios';
+  lsSet('mebuc_tab',v);
+  window.scrollTo(0,scrollPorVista[v]||0);
+}
+
+// Desde el buscador: carga el cuadrante en el PIN
+const MUNICIPIO_POR_ESTACION={
+  'Norte':'BUCARAMANGA','Centro':'BUCARAMANGA','Sur':'BUCARAMANGA',
+  'Floridablanca':'FLORIDABLANCA','Cumbre':'FLORIDABLANCA',
+  'Girón':'GIRÓN','Acapulco':'GIRÓN','Lebrija':'LEBRIJA','Aeropuerto':'LEBRIJA',
+  'Piedecuesta':'PIEDECUESTA','Los Santos':'LOS SANTOS',
+  'Mesa de los Santos':'MESA DE LOS SANTOS','Pescadero':'PESCADERO'
+};
+function usarCuadranteEnPin(g){
+  if(g.codigo&&g.codigo!=='N/A')document.getElementById('zapNumero').value=g.codigo;
+  const mun=MUNICIPIO_POR_ESTACION[g.estacion];
+  if(mun)document.getElementById('municipio').value=mun;
+  mostrarVista('pin');
+  const zap=document.getElementById('sectionZap');
+  if(!zap.classList.contains('hidden'))zap.scrollIntoView({behavior:'smooth',block:'center'});
+  mostrarToast('📍 Cuadrante '+(g.codigo||'')+' cargado en el PIN');
+}
+
+/* ======================= GENERADOR DE PIN ======================= */
+const EVENTOS={
+  oro_lesionado_af:{categoria:'ORO 20',nombre:'LESIONADO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por la venta y tráfico de estupefacientes...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue a cobrar el dinero a la esposa del victimario...'},{titulo:'Estado de la víctima / traslado',placeholder:'Ej: La víctima se trasladó por sus propios medios a la clínica...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperó un arma de fuego tipo revólver calibre 38...'},{titulo:'Testigos / versiones',placeholder:'Ej: Testigos manifestaron haber escuchado varias detonaciones...'},{titulo:'Antecedentes del lugar / zona',placeholder:'Ej: El sector es conocido por la presencia de expendios de estupefacientes.'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
+  oro_lesionado_cp:{categoria:'ORO 20',nombre:'LESIONADO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por una riña...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue atacada con un arma cortopunzante...'},{titulo:'Estado de la víctima / traslado',placeholder:'Ej: La víctima fue trasladada en ambulancia...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperó un arma cortopunzante tipo cuchillo...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
+  oro_lesionado_at:{categoria:'ORO 20',nombre:'LESIONADO POR ARMA TRAUMÁTICA',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Se registró la detonación de un arma traumática...'},{titulo:'Estado de la víctima / traslado',placeholder:'Ej: La víctima fue trasladada...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
+  oro_deceso:{categoria:'ORO 20',nombre:'DECESO HOSPITALARIO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue atacada y posteriormente...'},{titulo:'Traslado y deceso',placeholder:'Ej: La víctima fue trasladada a la clínica donde falleció...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
+  oro_homicidio_af:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios llegaron al lugar y dispararon...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperaron vainillas de arma de fuego...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
+  oro_homicidio_cp:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios atacaron al occiso con un arma cortopunzante...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
+  contra_verificacion_x:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PUBLICACIÓN RED SOCIAL X',municipioLibre:false,saludo:{destinatario:'mi capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  contra_policial_lesionado:{categoria:'CONTRAINTELIGENCIA',nombre:'POLICIAL LESIONADO EN PROCESAMIENTO',municipioLibre:false,saludo:{destinatario:'mi General',prefijo:'respetuosamente me permito informar la siguiente novedad'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:true,muestraUnidad:true,muestraTelefono:true,muestraVictimarios:false,tipoVictima:'policial'},
+  contra_servicio_policia:{categoria:'CONTRAINTELIGENCIA',nombre:'SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA',municipioLibre:true,saludo:{destinatario:'mi general'},plantillaAspectos:[{titulo:'Materialización de los hechos',placeholder:'Ej: La materialización de los hechos se presentó en jurisdicción de la ZAP...'},{titulo:'Responsables de la ZAP',placeholder:'Ej: Responsables de la ZAP. SI Fredy Rubiano Ramos CC. 91456694...'},{titulo:'Motivo de policía',placeholder:'Ej: Al momento de los hechos se encontraban atendiendo un motivo de policía...'},{titulo:'Cobertura ZAP',placeholder:'Ej: Se encontraban cubriendo la ZAP...'}],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'}
+};
+
+let eventoSeleccionado=null;
+let hayVictimarios=false;
+
+document.getElementById('selectOro20').addEventListener('change',function(){if(this.value){document.getElementById('selectContra').value='';seleccionarEvento(this.value);}});
+document.getElementById('selectContra').addEventListener('change',function(){if(this.value){document.getElementById('selectOro20').value='';seleccionarEvento(this.value);}});
+
+function seleccionarEvento(id){
+  eventoSeleccionado=EVENTOS[id];
+  if(!eventoSeleccionado)return;
+  const c=eventoSeleccionado;
+  document.getElementById('eventPreview').innerHTML='<strong>'+c.categoria+'</strong>&nbsp;→ '+c.nombre;
+  document.getElementById('groupMunicipio').classList.toggle('hidden',!c.municipioLibre);
+  const sv=document.getElementById('sectionVictimas');
+  if(c.tipoVictima){
+    sv.classList.remove('hidden');
+    const t=document.getElementById('tituloVictimas');
+    if(c.tipoVictima==='occiso')t.innerHTML='💀 Occisos';
+    else if(c.tipoVictima==='policial')t.innerHTML='👮 Policial lesionado';
+    else t.innerHTML='👤 Víctimas';
+  }else{sv.classList.add('hidden');}
+  document.getElementById('sectionVictimarios').classList.toggle('hidden',!c.muestraVictimarios);
+  if(!c.muestraVictimarios){
+    document.getElementById('toggleVictimarios').checked=false;
+    document.getElementById('victimariosContainer').classList.add('hidden');
+    document.getElementById('btnAgregarVictimario').classList.add('hidden');
+    hayVictimarios=false;
+  }
+  document.getElementById('sectionCapturados').classList.toggle('hidden',!c.muestraCapturados);
+  document.getElementById('sectionSPOA').classList.toggle('hidden',!c.muestraSPOA);
+  document.getElementById('spoaBlockVictimario').classList.toggle('hidden',!(hayVictimarios&&c.muestraSPOA));
+  document.getElementById('sectionZap').classList.toggle('hidden',!c.muestraZap);
+  aspectosData=[];aspectoEditIndex=null;
+  renderAspectosList();
+  document.getElementById('aspectoInputBox').classList.add('hidden');
+  document.getElementById('btnAgregarAspecto').classList.remove('hidden');
+  document.getElementById('aspectoInputText').value='';
+  const noAspectos=['contra_verificacion_x','contra_policial_lesionado'].includes(id);
+  document.getElementById('sectionAspectos').classList.toggle('hidden',noAspectos);
+  document.getElementById('victimasContainer').innerHTML='';
+  document.getElementById('victimariosContainer').innerHTML='';
+  document.getElementById('spoContainerVictima').innerHTML='';
+  document.getElementById('spoContainerVictimario').innerHTML='';
+  if(c.tipoVictima)agregarVictima();
+  if(hayVictimarios&&c.muestraVictimarios)agregarVictimario();
+}
+
+/* ---------- Aspectos de interés ---------- */
+let aspectosData=[];
+let aspectoEditIndex=null;
+
+function mostrarInputAspecto(editIndex){
+  aspectoEditIndex=(editIndex===undefined)?null:editIndex;
+  const label=document.getElementById('aspectoInputLabel');
+  const textarea=document.getElementById('aspectoInputText');
+  if(aspectoEditIndex!==null){
+    label.textContent='✏️ Editar aspecto de interés '+(aspectoEditIndex+1);
+    textarea.value=aspectosData[aspectoEditIndex];
+  }else{
+    label.textContent='✏️ Escribe el aspecto de interés';
+    textarea.value='';
+  }
+  document.getElementById('aspectoInputBox').classList.remove('hidden');
+  document.getElementById('btnAgregarAspecto').classList.add('hidden');
+  textarea.focus();
+  document.getElementById('aspectoInputBox').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function cancelarAspecto(){
+  aspectoEditIndex=null;
+  document.getElementById('aspectoInputText').value='';
+  document.getElementById('aspectoInputBox').classList.add('hidden');
+  document.getElementById('btnAgregarAspecto').classList.remove('hidden');
+}
+
+function guardarAspecto(){
+  const v=document.getElementById('aspectoInputText').value.trim();
+  if(!v){mostrarToast('⚠️ El aspecto está vacío');return;}
+  if(aspectoEditIndex!==null)aspectosData[aspectoEditIndex]=v;
+  else aspectosData.push(v);
+  renderAspectosList();
+  cancelarAspecto();
+}
+
+function editarAspecto(i){mostrarInputAspecto(i);}
+
+function eliminarAspecto(i){
+  if(!confirm('¿Eliminar este aspecto de interés?'))return;
+  aspectosData.splice(i,1);
+  if(aspectoEditIndex===i)cancelarAspecto();
+  renderAspectosList();
+}
+
+// Copiar un aspecto guardado
+function copiarAspecto(i){
+  copiarTexto(aspectosData[i],'✅ Aspecto '+(i+1)+' copiado');
+}
+// Copiar lo que está escrito en el editor (aunque no se haya guardado)
+function copiarAspectoEditor(){
+  copiarTexto(document.getElementById('aspectoInputText').value.trim(),'✅ Texto del aspecto copiado');
+}
+// Copiar todos los aspectos con el mismo formato que usa el PIN
+function copiarTodosAspectos(){
+  if(!aspectosData.length){mostrarToast('⚠️ No hay aspectos guardados');return;}
+  const txt='*Aspectos de interés*\n\n'+aspectosData.map(a=>'* '+a).join('\n\n');
+  copiarTexto(txt,'✅ '+aspectosData.length+' aspecto(s) copiados');
+}
+
+function renderAspectosList(){
+  const cont=document.getElementById('aspectosList');
+  cont.innerHTML='';
+  aspectosData.forEach((texto,i)=>{
+    const div=document.createElement('div');div.className='item-card';
+    div.innerHTML=`<div class="item-card-header"><span>📌 Aspecto ${i+1}</span><div class="item-actions">
+        <button class="btn btn-copy-sm" onclick="copiarAspecto(${i})">📋 Copiar</button>
+        <button class="btn btn-edit-sm" onclick="editarAspecto(${i})">✏️ Editar</button>
+        <button class="btn btn-danger" onclick="eliminarAspecto(${i})">✕</button>
+      </div></div><div class="aspecto-preview" style="font-size:.88em;color:var(--texto2);white-space:pre-wrap;"></div>`;
+    div.querySelector('.aspecto-preview').textContent=texto;
+    cont.appendChild(div);
+  });
+  document.getElementById('btnCopiarAspectos').classList.toggle('hidden',aspectosData.length===0);
+}
+
+/* ---------- Víctimas / victimarios / capturados ---------- */
+function agregarVictima(){
+  const c=eventoSeleccionado;
+  const n=document.querySelectorAll('#victimasContainer .item-card').length;
+  const esPrincipal=n===0;
+  const div=document.createElement('div');div.className='item-card';
+  div.innerHTML=`<div class="item-card-header"><span>${esPrincipal?'👤 Víctima principal':'👥 Víctima adicional #'+(n+1)}</span><button class="btn btn-danger" onclick="this.closest('.item-card').remove();renumerarVictimas();">✕</button></div>
+  <div class="form-group"><label>Nombre completo</label><input type="text" class="v-nombre" placeholder="Ej: Leonis Silva"></div>
+  <div class="row3">
+    <div class="form-group"><label>Edad</label><input type="number" inputmode="numeric" class="v-edad" placeholder="36"></div>
+    <div class="form-group"><label>Alias (opcional)</label><input type="text" class="v-alias" placeholder="El Gordo"></div>
+    <div class="form-group"><label>Cédula</label><input type="text" inputmode="numeric" class="v-cedula" placeholder="1102362852"></div>
+  </div>
+  <div class="form-group ${c&&!c.muestraHerida?'hidden':''}" data-field="herida"><label>${c&&c.tipoVictima==='occiso'?'Causa de muerte':'Herida / lesión principal'}</label><input type="text" class="v-herida" placeholder="${c&&c.tipoVictima==='occiso'?'múltiples impactos de arma de fuego':'una herida en el tórax'}"></div>
+  <div class="form-group ${c&&c.muestraUnidad?'':'hidden'}" data-field="unidad"><label>Unidad adscrita</label><input type="text" class="v-unidad" placeholder="Ej: FUDIS"></div>
+  <div class="form-group ${c&&c.muestraTelefono?'':'hidden'}" data-field="telefono"><label>Celular</label><input type="tel" class="v-telefono" placeholder="3208850848"></div>`;
+  document.getElementById('victimasContainer').appendChild(div);
+}
+
+function renumerarVictimas(){
+  document.querySelectorAll('#victimasContainer .item-card').forEach((c,i)=>{
+    c.querySelector('.item-card-header span').innerHTML=i===0?'👤 Víctima principal':'👥 Víctima adicional #'+(i+1);
+  });
+}
+
+function toggleVictimariosSection(){
+  const chk=document.getElementById('toggleVictimarios').checked;
+  hayVictimarios=chk;
+  document.getElementById('victimariosContainer').classList.toggle('hidden',!chk);
+  document.getElementById('btnAgregarVictimario').classList.toggle('hidden',!chk);
+  if(eventoSeleccionado&&eventoSeleccionado.muestraSPOA){
+    document.getElementById('spoaBlockVictimario').classList.toggle('hidden',!chk);
+  }
+  if(chk&&document.querySelectorAll('#victimariosContainer .item-card').length===0)agregarVictimario();
+}
+
+function agregarVictimario(){
+  const div=document.createElement('div');div.className='item-card';
+  div.innerHTML=`<div class="item-card-header"><span>🦹 Victimario #<span class="vm-num"></span></span><button class="btn btn-danger" onclick="this.closest('.item-card').remove();renumerarVictimarios();">✕</button></div>
+  <div class="form-group"><label>Nombre completo</label><input type="text" class="vm-nombre" placeholder="Carlos Julio Rosado Beltrán"></div>
+  <div class="row2">
+    <div class="form-group"><label>Cédula</label><input type="text" inputmode="numeric" class="vm-cedula" placeholder="1098703456"></div>
+    <div class="form-group"><label>Alias (opcional)</label><input type="text" class="vm-alias" placeholder="El Gordo"></div>
+  </div>`;
+  document.getElementById('victimariosContainer').appendChild(div);
+  renumerarVictimarios();
+}
+
+function renumerarVictimarios(){
+  document.querySelectorAll('#victimariosContainer .item-card').forEach((c,i)=>{c.querySelector('.vm-num').textContent=i+1;});
+}
+
+function agregarCapturado(){
+  const div=document.createElement('div');div.className='item-card';
+  div.innerHTML=`<div class="item-card-header"><span>🚔 Capturado #<span class="capt-num"></span></span><button class="btn btn-danger" onclick="this.closest('.item-card').remove();actualizarNumsCapturados();">✕</button></div>
+  <div class="form-group"><label>Nombre completo</label><input type="text" class="capt-nombre" placeholder="Jenny Viviana Alfonso Rivera"></div>
+  <div class="row2">
+    <div class="form-group"><label>Cédula</label><input type="text" inputmode="numeric" class="capt-cedula" placeholder="1098703456"></div>
+    <div class="form-group"><label>Motivo de captura</label><input type="text" class="capt-motivo" placeholder="porte de armas de fuego"></div>
+  </div>`;
+  document.getElementById('capturadosContainer').appendChild(div);
+  actualizarNumsCapturados();
+}
+
+function actualizarNumsCapturados(){
+  const cards=document.querySelectorAll('#capturadosContainer .item-card');
+  cards.forEach((c,i)=>{c.querySelector('.capt-num').textContent=i+1;});
+  document.getElementById('badgeCapturados').textContent=cards.length;
+}
+
+/* ---------- SPOA ---------- */
+function agregarSPO(persona){
+  const containerId=persona==='victima'?'spoContainerVictima':'spoContainerVictimario';
+  const container=document.getElementById(containerId);
+  if(!container.querySelector('.spoa-col-headers')){
+    const hdr=document.createElement('div');
+    hdr.className='spoa-col-headers';
+    hdr.innerHTML='<span>Cant.</span><span>Delito</span><span>Año(s)</span><span></span>';
+    container.appendChild(hdr);
+  }
+  const row=document.createElement('div');
+  row.className='spoa-row';
+  row.dataset.persona=persona;
+  row.innerHTML=`<input type="number" inputmode="numeric" class="spo-cantidad" placeholder="1" min="1" style="text-align:center;">
+  <input type="text" class="spo-delito" placeholder="Ej: Estupefacientes">
+  <input type="text" class="spo-anos" placeholder="2026, 2025">
+  <button class="btn btn-danger" style="padding:4px 8px;font-size:.72em;border-radius:6px;justify-content:center;" onclick="this.closest('.spoa-row').remove();limpiarCabeceraSpoa('${containerId}')">✕</button>`;
+  container.appendChild(row);
+}
+
+function limpiarCabeceraSpoa(containerId){
+  const container=document.getElementById(containerId);
+  if(container.querySelectorAll('.spoa-row').length===0){
+    const hdr=container.querySelector('.spoa-col-headers');
+    if(hdr)hdr.remove();
+  }
+}
+
+function obtenerSaludoActual(){
+  const h=new Date().getHours();
+  if(h<12)return{texto:'buenos días',icono:'🌞'};
+  if(h<18)return{texto:'buenas tardes',icono:'🌤️'};
+  return{texto:'buenas noches',icono:'🌙'};
+}
+
+/* ---------- Generación de PIN ---------- */
+function generarPIN(){
+  if(!eventoSeleccionado){alert('⚠️ Por favor selecciona un tipo de evento primero.');return;}
+  const fecha=document.getElementById('fecha').value;
+  const hora=document.getElementById('hora').value;
+  const municipio=document.getElementById('municipio').value;
+  const lugar=document.getElementById('lugar').value.trim();
+  let fechaFmt='';if(fecha){const[y,m,d]=fecha.split('-');fechaFmt=d+'/'+m+'/'+y;}
+  let horaFmt='';if(hora)horaFmt=hora.substring(0,5);
+  const saludo=obtenerSaludoActual();
+  const val=(card,sel)=>{const el=card.querySelector(sel);return el?el.value.trim():'';};
+  const victimas=[];
+  document.querySelectorAll('#victimasContainer .item-card').forEach(card=>{
+    victimas.push({nombre:val(card,'.v-nombre'),edad:val(card,'.v-edad'),alias:val(card,'.v-alias'),cedula:val(card,'.v-cedula'),
+      herida:val(card,'.v-herida'),unidad:val(card,'.v-unidad'),telefono:val(card,'.v-telefono')});
+  });
+  const victimarios=[];
+  document.querySelectorAll('#victimariosContainer .item-card').forEach(card=>{
+    const nombre=val(card,'.vm-nombre');
+    if(nombre)victimarios.push({nombre,cedula:val(card,'.vm-cedula'),alias:val(card,'.vm-alias')});
+  });
+  const evId=Object.keys(EVENTOS).find(k=>EVENTOS[k]===eventoSeleccionado);
+  let pin='';
+  const d={fechaFmt,horaFmt,municipio,lugar,victimas,victimarios,saludo};
+  if(evId.startsWith('oro_'))pin=generarOro20(evId,d);
+  else if(evId==='contra_verificacion_x')pin=generarContraVerificacionX(d);
+  else if(evId==='contra_policial_lesionado')pin=generarContraPolicialLesionado(d);
+  else if(evId==='contra_servicio_policia')pin=generarContraServicioPolicia(d);
+  document.getElementById('output').textContent=pin;
+  document.getElementById('output').scrollIntoView({behavior:'smooth'});
+}
+
+function leerSpoaDeContenedor(containerId){
+  const anotaciones=[];
+  document.querySelectorAll('#'+containerId+' .spoa-row').forEach(row=>{
+    const cantidad=row.querySelector('.spo-cantidad').value.trim();
+    const delito=row.querySelector('.spo-delito').value.trim();
+    const anos=row.querySelector('.spo-anos').value.trim();
+    if(delito&&anos)anotaciones.push({cantidad,delito,anos});
+  });
+  return anotaciones;
+}
+
+function construirBloqueSpoa(etiqueta,nombre,cedula,anotaciones,indiceInicial){
+  if(anotaciones.length===0)return'';
+  let txt=etiqueta+' presenta las siguientes anotaciones por SPOA\n';
+  txt+=(nombre||'[Nombre]')+'\n';
+  txt+=(cedula||'[Cédula]')+'\n\n';
+  txt+='Indiciado por\n\n';
+  anotaciones.forEach((s,i)=>{
+    const cantTexto=s.cantidad?s.cantidad+' ':'';
+    txt+='-'+String(indiceInicial+i+1).padStart(2,'0')+' '+cantTexto+'por '+s.delito+' año '+s.anos+'\n';
+  });
+  return txt+'\n';
+}
+
+function generarOro20(evId,d){
+  const config=EVENTOS[evId];
+  const capturados=[];
+  document.querySelectorAll('#capturadosContainer .item-card').forEach(card=>{
+    const nombre=card.querySelector('.capt-nombre').value.trim();
+    if(nombre)capturados.push({nombre,cedula:card.querySelector('.capt-cedula').value.trim(),motivo:card.querySelector('.capt-motivo').value.trim()});
+  });
+  const numCapturas=capturados.length;
+  const capturasTexto=numCapturas>0?' Y '+String(numCapturas).padStart(2,'0')+' CAPTURAS':'';
+  let pin='*RIPOL5 - MEBUC - '+config.nombre+capturasTexto+' EN EL MPIO DE '+d.municipio+'*\n\n';
+  pin+='Dios y patria, mi General, '+d.saludo.texto+'.\n\n';
+  const vPrincipal=d.victimas[0]||{};
+  let victimaTexto='*'+(vPrincipal.nombre||'[Nombre]')+'*';
+  if(vPrincipal.alias)victimaTexto+=' alias *'+vPrincipal.alias+'*';
+  if(vPrincipal.edad)victimaTexto+=' ('+vPrincipal.edad+' años)';
+  if(evId.includes('homicidio')||evId==='oro_deceso'){
+    pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en '+(d.lugar||'[lugar]')+', se presentó el '+config.nombre.toLowerCase()+' de '+victimaTexto+'.\n\n';
+  }else{
+    pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en '+(d.lugar||'[lugar]')+', resultó lesionado '+victimaTexto+', quien presenta '+(vPrincipal.herida||'[herida/lesión]')+'.\n\n';
+  }
+  if(d.victimas.length>1){
+    pin+='*Víctimas adicionales:*\n\n';
+    for(let i=1;i<d.victimas.length;i++){
+      const v=d.victimas[i];let txt='* '+(v.nombre||'[Nombre]');
+      if(v.edad)txt+=' ('+v.edad+' años)';
+      if(v.herida)txt+=', presenta '+v.herida;
+      pin+=txt+'\n';
+    }
+    pin+='\n';
+  }
+  if(d.victimarios.length>0){
+    pin+='*Victimarios:*\n\n';
+    d.victimarios.forEach(vm=>{
+      let txt='* '+vm.nombre;
+      if(vm.alias)txt+=' alias *'+vm.alias+'*';
+      if(vm.cedula)txt+=' CC. '+vm.cedula;
+      pin+=txt+'\n';
+    });
+    pin+='\n';
+  }
+  if(aspectosData.length>0){pin+='*Aspectos de interés*\n\n';aspectosData.forEach(a=>{pin+='* '+a+'\n\n';});}
+
+  const spoaVictima=leerSpoaDeContenedor('spoContainerVictima');
+  pin+=construirBloqueSpoa('La víctima',vPrincipal.nombre,vPrincipal.cedula,spoaVictima,0);
+  if(d.victimarios.length>0){
+    const vmRef=d.victimarios[0];
+    pin+=construirBloqueSpoa('El victimario',vmRef.nombre,vmRef.cedula,leerSpoaDeContenedor('spoContainerVictimario'),spoaVictima.length);
+  }
+
+  const zapNum=document.getElementById('zapNumero').value.trim();
+  const modalidadVal=document.getElementById('modalidad').value.trim();
+  pin+='Zona de atención: '+(zapNum||'POR ESTABLECER')+'\n';
+  pin+='Modalidad: '+(modalidadVal||'POR ESTABLECER')+'\n';
+  return pin;
+}
+
+function generarContraVerificacionX(d){
+  let pin='*RIPOL5 - MEBUC - ACTIVIDADES DE VERIFICACIÓN FRENTE A PUBLICACIÓN DE ABUSO DE AUTORIDAD EN LA RED SOCIAL X*\n\n';
+  pin+='Dios y Patria mi capitán, '+d.saludo.texto+'.\n\n';
+  pin+='(Completa los campos del evento de verificación)\n';
+  return pin;
+}
+
+function generarContraPolicialLesionado(d){
+  const p=d.victimas[0]||{};
+  let pin='🟢*POLICIAL LESIONADO EN PROCESAMIENTO*\n\n';
+  pin+='_Dios y patria mi General '+d.saludo.texto+', respetuosamente me permito informar la siguiente novedad_\n\n';
+  pin+='*Hechos*: Siendo las '+(d.horaFmt||'[hora]')+' horas del día '+(d.fechaFmt||'[fecha]')+'.\n\n';
+  pin+='*Lesionado*: *'+(p.nombre||'[Nombre del policial]')+'*';
+  if(p.cedula)pin+=', CC. '+p.cedula;
+  if(p.unidad)pin+=', adscrita a la '+p.unidad;
+  if(p.telefono)pin+='\nCelular: '+p.telefono;
+  if(p.herida)pin+='\npresenta: '+p.herida+'.';
+  pin+='\n\n> *NOTA: Recuerde que cualquier uso, difusión, distribución, copiado o divulgación de esta comunicación está estrictamente prohibido.*\n';
+  return pin;
+}
+
+function generarContraServicioPolicia(d){
+  const vPrincipal=d.victimas[0]||{};
+  let victimaTexto='*'+(vPrincipal.nombre||'[Nombre]')+'*';
+  if(vPrincipal.edad)victimaTexto+=' de ('+vPrincipal.edad+') años';
+  let pin='*RIPOL5 - MEBUC - SERVICIO DE POLICÍA FRENTE A HECHOS DE AFECTACIÓN A LA VIDA EN '+d.municipio+'*\n\n';
+  pin+='Dios y patria mi general, '+d.saludo.texto+'.\n\n';
+  pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en '+(d.lugar||'[lugar]')+', se presentó el homicidio de '+victimaTexto+'.\n\n';
+  pin+='*Servicio de Policía*\n\n';
+  aspectosData.forEach(a=>{pin+='* '+a+'\n\n';});
+  if(d.victimarios.length>0){
+    pin+='*Victimarios:*\n\n';
+    d.victimarios.forEach(vm=>{let txt='* '+vm.nombre;if(vm.alias)txt+=' alias *'+vm.alias+'*';if(vm.cedula)txt+=' CC. '+vm.cedula;pin+=txt+'\n';});
+    pin+='\n';
+  }
+  return pin;
+}
+
+/* ---------- Acciones del PIN ---------- */
+function textoPIN(){
+  // innerText conserva los saltos de línea si el usuario editó el recuadro
+  const t=document.getElementById('output').innerText.trim();
+  return (t&&t!=='El PIN generado aparecerá aquí...')?t:'';
+}
+
+function copiarPIN(){
+  const texto=textoPIN();
+  if(!texto){alert('⚠️ Primero genera el PIN.');return;}
+  copiarTexto(texto);
+}
+
+function compartirWhatsApp(){
+  const texto=textoPIN();
+  if(!texto){alert('⚠️ Primero genera el PIN.');return;}
+  const url='https://wa.me/?text='+encodeURIComponent(texto);
+  // En la app nativa se navega al enlace para que Android/iOS abra WhatsApp directamente
+  if(window.ES_NATIVO)window.location.href=url;
+  else window.open(url,'_blank');
+  mostrarToast('📱 Abriendo WhatsApp...');
+}
+
+function nuevo(){
+  if(confirm('¿Seguro que deseas limpiar todo el formulario del PIN?'))location.reload();
+}
+
+/* ---------- Arranque ---------- */
+window.addEventListener('load',()=>{
+  const hoy=new Date();
+  document.getElementById('fecha').value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
+  document.getElementById('hora').value=String(hoy.getHours()).padStart(2,'0')+':'+String(hoy.getMinutes()).padStart(2,'0');
+
+  if(window.ES_NATIVO)return; // en la APK no se muestran avisos de instalación
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  if(isIOS&&!isStandalone&&!lsGet('ios_hint_dismissed')){
+    setTimeout(()=>{document.getElementById('ios-hint').style.display='block';},2500);
+  }
+});
+
+mostrarVista(lsGet('mebuc_tab')||'pin');
+
+/* ---------- Instalación PWA (solo navegador) ---------- */
+var deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  deferredPrompt=e;
+  if(!window.matchMedia('(display-mode: standalone)').matches&&!lsGet('banner_dismissed')){
+    setTimeout(()=>{document.getElementById('install-banner').style.display='block';},1800);
+  }
+});
+window.addEventListener('appinstalled',function(){
+  document.getElementById('install-banner').style.display='none';
+  mostrarToast('✅ Aplicación instalada');
+});
+function instalarApp(){
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r=>{
+    document.getElementById('install-banner').style.display='none';
+    deferredPrompt=null;
+    if(r.outcome==='accepted')mostrarToast('✅ Instalando...');
+  });
+}
+function cerrarBanner(){document.getElementById('install-banner').style.display='none';lsSet('banner_dismissed','1');}
+function cerrarIosHint(){document.getElementById('ios-hint').style.display='none';lsSet('ios_hint_dismissed','1');}
+</script>
+
+<!-- ======================= BUSCADOR MEBUC ======================= -->
+<script>
+(function(){
+const BASE_DATA = [{"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "Villa Carmelo", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "El Pablón", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "Barrio Nuevo", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "Divino Niño", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "El Rosal", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "Rosal Alto y Bajo", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-1", "barrio": "Villa Luz Campestre", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "Café Madrid", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "La Playa", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "La Loma", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "El Túnel", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "Los Corrales", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "La Unión", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "El Cable", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "La Virgen", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "Villa Licia", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-2", "barrio": "Las Betanias 7,8,9,10,11,12", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-23", "barrio": "Villas de San Ignacio Etapa 7", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-23", "barrio": "Villas de San Ignacio Real", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-23", "barrio": "Bavaria II", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Colorados", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Campestre Norte", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Limoncito", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Patio Bonito", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Nogal I", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Bonanza Campestre", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Getsemaní", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Los Cedros", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "La Fortura", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Café Madrid", "codigo": "1-28", "barrio": "Rosa Alta", "od": 0, "oe": 0, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Lizcano 1", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Lizcano 2", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Nuevo Horizonte", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Villa Helena 1", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Villa Helena 2", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Los Ángeles", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-5", "barrio": "Bosconia", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-6", "barrio": "Esperanza 1", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-6", "barrio": "Esperanza 2", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-6", "barrio": "Esperanza 3", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-6", "barrio": "Regaderos Norte", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-7", "barrio": "San Cristóbal", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Esperanza I", "codigo": "1-7", "barrio": "La Juventud", "od": 0, "oe": 0, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Girardot", "codigo": "1-11", "barrio": "Gaitán", "od": 0, "oe": 0, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Girardot", "codigo": "1-11", "barrio": "La Gloria", "od": 0, "oe": 0, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Girardot", "codigo": "1-12", "barrio": "Girardot", "od": 0, "oe": 0, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Girardot", "codigo": "1-22", "barrio": "Antonio Nariño", "od": 0, "oe": 0, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Kennedy", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Altos del Kennedy", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Miradores del Kennedy", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Balcones del Kennedy", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Las Hamacas", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Villalegria I", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Villa Alegria II", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Omaga II", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-3", "barrio": "Omaga I", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "Claveriano", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "San Valentín", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "Olas Bajas", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "Olas Latas", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "Altos del Progreso", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "Paisajes del Norte", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-4", "barrio": "Villa María", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "María Paz", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Colseguros Norte", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Minuto de Dios", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Miramar", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Jardines de Alta Gracia", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Tejar Norte I", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Asentamiento Humano Cervi Unión", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Asentamiento Humano Caminos de Paz", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-21", "barrio": "Tejar Norte II", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-24", "barrio": "Villa Rosa", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Kennedy", "codigo": "1-24", "barrio": "13 de Junio", "od": 0, "oe": 0, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Nueva Colombia", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Transiciones 1", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Transiciones 2", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Transiciones 3", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Transiciones 4", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Transiciones 5", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "La Independencia", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Bosque Norte Bajo", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-8", "barrio": "Parte Alta de la Juventud", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-9", "barrio": "San Rafael", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-9", "barrio": "Cinal", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-9", "barrio": "Villa Mercedes", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-9", "barrio": "Bosque Norte Alto", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-9", "barrio": "Olas 2", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-10", "barrio": "Chapinero", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-10", "barrio": "Comuneros", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-10", "barrio": "Mutualidad", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "La Virgen", "codigo": "1-10", "barrio": "Modelo", "od": 0, "oe": 0, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-19", "barrio": "Albania", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-19", "barrio": "Venado de Oro", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-19", "barrio": "Los Sauces", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-19", "barrio": "El Retiro", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-19", "barrio": "Limoncito", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-20", "barrio": "Buena Vista", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-20", "barrio": "Buenos Aires", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Morrorico", "codigo": "1-27", "barrio": "Miraflores", "od": 0, "oe": 0, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Alonso", "codigo": "1-17", "barrio": "San Alonso", "od": 0, "oe": 0, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Alonso", "codigo": "1-17", "barrio": "Puerto Rico", "od": 0, "oe": 0, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Alonso", "codigo": "1-18", "barrio": "Los Pinos", "od": 0, "oe": 0, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Alonso", "codigo": "1-18", "barrio": "El Diviso", "od": 0, "oe": 0, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Alonso", "codigo": "1-18", "barrio": "Vegas de Morrorico", "od": 0, "oe": 0, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-14", "barrio": "La Universidad", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-14", "barrio": "Independencia", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-14", "barrio": "Puerto Rico", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-14", "barrio": "Miradores de la UIS", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-15", "barrio": "Alarcón", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-16", "barrio": "Alarcón", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-16", "barrio": "San Francisco", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-25", "barrio": "Comuneros", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-25", "barrio": "La Independencia", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-25", "barrio": "La Universidad", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "San Francisco", "codigo": "1-25", "barrio": "San Francisco", "od": 0, "oe": 0, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-13", "barrio": "Girardot", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-13", "barrio": "Pío XII", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-13", "barrio": "23 de Junio", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-13", "barrio": "XII de Octubre", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-13", "barrio": "Santander", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-13", "barrio": "Don Bosco", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "La Feria", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Paseo de la Feria", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Nápoles", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Camilo Torres", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Villas de Girardot", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Zarabanda", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Divino Niño", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Cuyanita", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Norte", "cai": "Santander", "codigo": "1-26", "barrio": "Milagro de Dios", "od": 0, "oe": 0, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Américas", "codigo": "2-12", "barrio": "Álvarez", "od": 0, "oe": 1, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Américas", "codigo": "2-12", "barrio": "Prado", "od": 0, "oe": 1, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Américas", "codigo": "2-12", "barrio": "Los Alpez", "od": 0, "oe": 1, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Américas", "codigo": "2-12", "barrio": "Quinta Dania", "od": 0, "oe": 1, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Américas", "codigo": "2-13", "barrio": "Mejoras Públicas", "od": 0, "oe": 1, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Américas", "codigo": "2-13", "barrio": "Aurora", "od": 0, "oe": 1, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Antonia Santos", "codigo": "2-15", "barrio": "Antonia Santos", "od": 0, "oe": 1, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Campo Hermoso", "codigo": "2-3", "barrio": "Campo Hermoso", "od": 0, "oe": 1, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Campo Hermoso", "codigo": "2-3", "barrio": "Villa del Prado", "od": 0, "oe": 1, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Campo Hermoso", "codigo": "2-3", "barrio": "Villa Esmeralda", "od": 0, "oe": 1, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Campo Hermoso", "codigo": "2-20", "barrio": "Primero de Mayo", "od": 0, "oe": 1, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Campo Hermoso", "codigo": "2-20", "barrio": "Campo Hermoso", "od": 0, "oe": 1, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Campo Hermoso", "codigo": "2-20", "barrio": "Charta", "od": 0, "oe": 1, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Centenario", "codigo": "2-16", "barrio": "Centro", "od": 0, "oe": 1, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Centenario", "codigo": "2-17", "barrio": "Centro", "od": 0, "oe": 1, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Chimita", "codigo": "2-21", "barrio": "No aplica", "od": 0, "oe": 1, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Chimita", "codigo": "2-22", "barrio": "No aplica", "od": 0, "oe": 1, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Comercio", "codigo": "2-18", "barrio": "Centro", "od": 0, "oe": 1, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Comercio", "codigo": "2-19", "barrio": "Bolívar", "od": 0, "oe": 1, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Comercio", "codigo": "2-19", "barrio": "Centro", "od": 0, "oe": 1, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "De los Niños", "codigo": "2-14", "barrio": "Antonia Santos", "od": 0, "oe": 1, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "De los Niños", "codigo": "2-14", "barrio": "Bolívar", "od": 0, "oe": 1, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Concordia", "codigo": "2-4", "barrio": "Candiles", "od": 0, "oe": 1, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Concordia", "codigo": "2-4", "barrio": "San Miguel", "od": 0, "oe": 1, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Concordia", "codigo": "2-4", "barrio": "Ricaurte", "od": 0, "oe": 1, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Concordia", "codigo": "2-5", "barrio": "Concordia", "od": 0, "oe": 1, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Concordia", "codigo": "2-6", "barrio": "Concordia", "od": 0, "oe": 1, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Concordia", "codigo": "2-6", "barrio": "Nuevo Sotomayor", "od": 0, "oe": 1, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Joya", "codigo": "2-1", "barrio": "Alfonso López", "od": 0, "oe": 1, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Joya", "codigo": "2-1", "barrio": "La Joya", "od": 0, "oe": 1, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Joya", "codigo": "2-2", "barrio": "García Rovira", "od": 0, "oe": 1, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "La Joya", "codigo": "2-2", "barrio": "Chorreras de Don Juan", "od": 0, "oe": 1, "oc": 8}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "San Pío", "codigo": "2-9", "barrio": "Cabecera del Llano", "od": 0, "oe": 1, "oc": 9}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "San Pío", "codigo": "2-10", "barrio": "Cabecera del Llano", "od": 0, "oe": 1, "oc": 9}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "San Pío", "codigo": "2-11", "barrio": "Cabecera del Llano", "od": 0, "oe": 1, "oc": 9}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Soto Mayor", "codigo": "2-7", "barrio": "Antiguo Campestre", "od": 0, "oe": 1, "oc": 10}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Soto Mayor", "codigo": "2-7", "barrio": "Bolarqui", "od": 0, "oe": 1, "oc": 10}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Soto Mayor", "codigo": "2-8", "barrio": "Sotomayor", "od": 0, "oe": 1, "oc": 10}, {"distrito": "Distrito 1", "estacion": "Centro", "cai": "Soto Mayor", "codigo": "2-8", "barrio": "Mejoras Públicas", "od": 0, "oe": 1, "oc": 10}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-15", "barrio": "Granjas de Provenza Bajo y Alta", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-15", "barrio": "Viveros de Provenza", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-16", "barrio": "Diamante II", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-16", "barrio": "San Luis", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-16", "barrio": "Provenza (desde la calle 100 hasta la calle 105 y desde la carrera 19 hasta el puente de provenza cra 26)", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-16", "barrio": "Fontana", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "INEM", "codigo": "3-19", "barrio": "Provenza (desde la calle 105 hasta la calle 115 A carrera 21 hasta la carrera 26)", "od": 0, "oe": 2, "oc": 0}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-5", "barrio": "La Salle / Comuna 6", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-5", "barrio": "Puerta del Sol", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-5", "barrio": "Conucos", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-5", "barrio": "Las Mercedes", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "La Victoria / Comuna 6", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "La Ceiba / Comuna 6", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "20 de Julio", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "El Ricaute", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "Juan XXIII", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "Pablo VI", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "África", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "La Victoria", "codigo": "3-6", "barrio": "Cordoncillo I", "od": 0, "oe": 2, "oc": 1}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Mutis", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Balconcitos", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Monteredondo", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Los Héroes", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Estoraques 1 y 2", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Manzanares", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Brisas del Mutis", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-10", "barrio": "Balcones", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-12", "barrio": "Bucaramanga", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Mutis", "codigo": "3-12", "barrio": "Peñón del Valle", "od": 0, "oe": 2, "oc": 2}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-7", "barrio": "Ciudadela Real de Minas", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-7", "barrio": "Gómez Niño Comuna 6", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-8", "barrio": "San Gerardo I, II", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-8", "barrio": "Laureles", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-8", "barrio": "Antiguo Colombia", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-8", "barrio": "Cordoncillo II", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-8", "barrio": "Los Canelos", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-8", "barrio": "Los Laureles", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Real de Minas", "codigo": "3-9", "barrio": "Ciudadela Real de Minas", "od": 0, "oe": 2, "oc": 3}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Granjas de Julio Rincón", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Villa Flor", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Villa Sara", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Toledo Plata", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Dangond", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Villas del Nogal", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Granjas Rigan", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Punta Paraíso", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Rocío", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Delicias Altas", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-14", "barrio": "Villa Candado", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Conquistadores", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Manuela Beltrán", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Villa Alicia", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Santa María", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Igsabelar", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Ciudad Venecia", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Jardines de Coaviconsa", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Sur", "codigo": "3-18", "barrio": "Nueva Fontana", "od": 0, "oe": 2, "oc": 4}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terminal de Transporte", "codigo": "3-17", "barrio": "No aplica", "od": 0, "oe": 2, "oc": 5}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-1", "barrio": "Alto Terrazas", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-1", "barrio": "Terrazas", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-1", "barrio": "Pan de Azúcar Alto y Bajo", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-1", "barrio": "La Floresta", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-1", "barrio": "Los Cedros", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-2", "barrio": "Lagos del Cacique", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-2", "barrio": "El Tejar", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Terrazas", "codigo": "3-2", "barrio": "Los Guayacanes I y II", "od": 0, "oe": 2, "oc": 6}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-3", "barrio": "Antonia Santos", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-3", "barrio": "San Pedro", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-3", "barrio": "Nueva Granada", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-3", "barrio": "Quebrada de la Iglesia", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-3", "barrio": "San Martín Alto y Bajo", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "La Pedregosa", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "Villa Inés", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "Las Casitas", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "Porto Fino", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "La Libertad", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "Diamante I", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 1", "estacion": "Sur", "cai": "Viaducto", "codigo": "3-4", "barrio": "Asturias I, II", "od": 0, "oe": 2, "oc": 7}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-3", "barrio": "Cañaveral", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-4", "barrio": "Sin barrios registrados", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-5", "barrio": "Palomitas", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-5", "barrio": "Villa España", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-5", "barrio": "El Bosque", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-5", "barrio": "Tarragona", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-5", "barrio": "El Progreso", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Cañaveral", "codigo": "4-5", "barrio": "Villa Mayorca", "od": 1, "oe": 3, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Casco Antiguo", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "El Manantial", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "El Recreo", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Primavera I", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Primavera II", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Villas de San Francisco", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Paraguitas Campestre", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Florida Real", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Monteblanco", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-1", "barrio": "Villa Jardín", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Buenos Aires", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Aranzoque", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "González Chaparro", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Versalles", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Baviera", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Villa Claver", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Villas de San Diego", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Villa Yolanda", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Brisas de Florida", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Ciudadela de los Príncipes", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "Villa Margarita", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-2", "barrio": "La Paz", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Altamira", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Limoncito", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Jardín del Limoncito", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Andes", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Favuis", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Nogales", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "La Ronda I, II, III, IV y V", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Casco Antiguo", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Cooviflorida", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-10", "barrio": "Paraguitas", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Los Andes", "codigo": "4-11", "barrio": "Limoncito Alto", "od": 1, "oe": 3, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "El Dorado", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "La Castellana", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "Zapamanga I, II, III y VI", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "Jardines del Niza", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "Bosques del Payador", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "Guayacanes", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-8", "barrio": "Niza", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-9", "barrio": "Alto Viento I y II", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-9", "barrio": "Balcones de la Colina", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-9", "barrio": "Bellavista Casas", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-9", "barrio": "Caldas", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Niza", "codigo": "4-9", "barrio": "Tenza", "od": 1, "oe": 3, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-6", "barrio": "Lagos II, III, IV, V", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Villabel", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Nuevo Villabel", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Ciudad Valencia", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Guanata", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Andalucía", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Molinos Bajos", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Molinos Altos", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Los Rosales", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "Oities", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-7", "barrio": "El Remanso", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-12", "barrio": "Lagos I", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-12", "barrio": "Asovilagos", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-12", "barrio": "Cañaveral Oriental", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Floridablanca", "cai": "Villabel", "codigo": "4-12", "barrio": "Villa Natalia", "od": 1, "oe": 3, "oc": 3}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-1", "barrio": "Bucarica", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-1", "barrio": "Balcones del Oriente", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Altos de Santana", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Altos de Villabel", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Prados del Sur", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Altos de Florida", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Villa Real del Sur", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Santa Ana", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Los Alpes", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Villa Helena Sur", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Morador de Santuarios", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Miradores del Campo", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Miradores de Florida", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Hogar Altos de Santana", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Escoflor", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-2", "barrio": "Portal de Santana", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-8", "barrio": "Altos de Caracolí", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-8", "barrio": "Villa Coram", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-8", "barrio": "Caracolí", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Bucarica", "codigo": "5-8", "barrio": "Bucarica Sector 17-20", "od": 1, "oe": 4, "oc": 0}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Sector del barrio La Cumbre Cumbarí", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Suratoque", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Panorama", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "La Cumbre", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Sector del barrio La Cumbre Las Granjas", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Sector del barrio La Cumbre San Carlos", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "La Cumbre Mirador de Vallarta", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Sector del barrio La Cumbre Los Mangos", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-3", "barrio": "Alares de la Cumbre", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Asdesur", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Sendas", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Asdesur I", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Villa Tarel", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Asdesur II", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Aviter", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Asovisur I", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Asovisur II", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Ciudad 2000", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Corpovisur I-II", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Florida Campestre", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Aguas Claras", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Juan Pablo II", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "La Cumbre", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Pío XII", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Sector Barrio La Cumbre Pomarroso", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Villa Alcázar", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Brisas de la Florida", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Mirador de la Sierra", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Bellavista La Cumbre", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Portal de Jericó", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Villa Solar", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-4", "barrio": "Asdesur III", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-9", "barrio": "García Echeverry", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-9", "barrio": "El Carmen Etapas I-II-III-IV-V-VI", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "El Carmen", "codigo": "5-9", "barrio": "Portal de Israel", "od": 1, "oe": 4, "oc": 1}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Villaluz", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Cerros del Reposo", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Ciudad Jardín", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "José A. Morales", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "La Esmeralda", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Palmeras 1", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Palmeras 2", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Las Villas", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Cerros de las Villas", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Laureles", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Zapamanga V Etapa", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Santa Inés", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-5", "barrio": "Asocoflor", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Oasis", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Asdeflor 1", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Arrayanes I", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Arrayanes II", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Balcón de Alares", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Balcón del Reposo", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Reposo", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Alares", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Los Robles", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Santa Helena de la Sierra I", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Santa Helena de la Sierra II", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Santa Helena de la Sierra III", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Santa Helena de la Sierra IV", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Miradores del Reposo", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Villas de San Pedro", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-6", "barrio": "Jordán", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Zapamanga VII", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Zapamanga IV", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Santa Fe", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "San Bernardo", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Hacienda San Juan", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "La Trinidad", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Belencito", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Urbanización Fátima", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Altos del Cacique", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "El Campanazo", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "San Expedito", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Prados de Fátima", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Mirador de Fátima", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Los Olivos", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Bosques del Cacique", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 2", "estacion": "Cumbre", "cai": "Reposo", "codigo": "5-7", "barrio": "Conjunto Residencial Sierra Verde", "od": 1, "oe": 4, "oc": 2}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-7", "barrio": "Mirador de Arenales", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-7", "barrio": "Riveras del Río", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-7", "barrio": "Vereda Llanadas", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-7", "barrio": "Villa de los Caballeros", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-7", "barrio": "Villas de San Juan", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-7", "barrio": "El Laguito", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "Altos de Arenales", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "El Progreso", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "Jardín de Arenales", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "Villa del Sol", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "Villa del Rey", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "Las Marías", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Arenales", "codigo": "6-9", "barrio": "Vereda Las Palmas", "od": 2, "oe": 5, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-13", "barrio": "El Porvenir / Bimga", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-13", "barrio": "Anda Lucía", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Acacios", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Ciudad Metropolitana", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "El Pórtico", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "España", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "España Real", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Guaduales", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Hoyos I y II", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Malpaso", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Marianela", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Balcones de Provenza", "codigo": "6-16", "barrio": "Quintas de Santana", "od": 2, "oe": 5, "oc": 1}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Ciudadela Villamil", "codigo": "N/A", "barrio": "Sin barrios registrados", "od": 2, "oe": 5, "oc": 2}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Nuevo Girón", "codigo": "6-8", "barrio": "Ciudadela Nuevo Girón", "od": 2, "oe": 5, "oc": 3}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Nuevo Girón", "codigo": "6-10", "barrio": "Ciudadela Nuevo Girón", "od": 2, "oe": 5, "oc": 3}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Asentamiento Humano Río de Oro", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "El Palenque", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Chimita", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Río de Oro", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Rincón de la Paz", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Altos de Andina", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Convivir", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Vereda Bocas", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Brisas del Prado", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-1", "barrio": "Centro Poblado Bocas", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-18", "barrio": "La Esmeralda", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-18", "barrio": "Ciudadela Comfenalco", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-18", "barrio": "Morada San Juan", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-18", "barrio": "Cenfer", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Palenque", "codigo": "6-18", "barrio": "Zona Industrial", "od": 2, "oe": 5, "oc": 4}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "El Poblado", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "Bella Isla", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "El Carmen", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "Brisas del Río", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "La Arboleda", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "Alicante", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-3", "barrio": "Castilla La Nueva", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "Casco Antiguo", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "Centro", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "La Rivera", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "El Tejar", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "Malecón", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "El Carrizal", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "La Muralla I y II", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "El Llanito Bajo", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "Torres de San Juan", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "La Rinconada", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "La Constituyente", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "La Playa", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "Altos del Tejar", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Parque Gallineral", "codigo": "6-20", "barrio": "Aptos Tejar", "od": 2, "oe": 5, "oc": 5}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Gallineral", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Santa Cruz", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Río de Oro", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Arenales Campestre", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Arenales 1", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Quintas Campestre", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Arenales 2", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Arenales 3", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-5", "barrio": "Arenales 4", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "Primero de Mayo", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "Corviandi 1", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "Portal Campestre 1,2,3,4,5", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "Portal Campestre Norte", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "Villa Campestre", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "Río Prado", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Primero de Mayo", "codigo": "6-14", "barrio": "El Consuelo", "od": 2, "oe": 5, "oc": 6}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "San Antonio del Carrizal", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Carrizal Campestre", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Bosquesitos", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Estoraques", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Altos de Carrizal", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Altos de San Antonio", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Mirador del Carrizal", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Asovisolán", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-4", "barrio": "Palmas", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Álvarez", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Mirador de San Juan", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Palmas", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Bellavista Alta", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Bellavista Baja", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Altos del Poblado", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Corviandi III", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "El Paraíso", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Balcones de Alejandría", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Quintas del Llanito", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Altos del Llanito", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "San Antonio de Carrizal", "codigo": "6-17", "barrio": "Giraluz", "od": 2, "oe": 5, "oc": 7}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Ciudadela del Oriente", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Balcones de Girón", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Aldea Alta", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Aldea Media", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Aldea Baja", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Alcántara", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Villa Carolina I, II", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Jardines de la Aldea", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Las Palmeras", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Portal de la Aldea", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Torres de Cumaná", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Bora", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-11", "barrio": "Mirador de la Aldea", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "Sagrado Corazón", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "Eloy Valenzuela", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "Altos de la Campiña", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "Portal de la Campiña", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "La Campiña", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "Las Nieves", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "La Fuente", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villa Carolina", "codigo": "6-19", "barrio": "Mirador de la Campiña", "od": 2, "oe": 5, "oc": 8}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Cambulos", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Villampiz", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Villas de Don Juan I", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Puerto Madero", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Villas de Don Juan II", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Mestetas 1, 2, 3", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Villa Sofía", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Vida en Primavera", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Lomas del Viento", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Hacienda la Meseta", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Valle de los Caballeros", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Prados de Cataluña", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Brisas del Campo", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Brisas de Río Frío", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-6", "barrio": "Almenárez de San Juan", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-15", "barrio": "Girón Campestre", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-15", "barrio": "Bambúes", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Girón", "cai": "Villas de Don Juan 2 Etapa", "codigo": "6-15", "barrio": "Alpes Campestre", "od": 2, "oe": 5, "oc": 9}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "El Centro", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "Santa Bárbara", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "San Jorge", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "El Nuevo Amanecer \"Chirilí\"", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "El Pesebre", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "La Popa", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "Villa Paraíso", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-1", "barrio": "La Loma", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "El Centro", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "La Loma", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "María Paz", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Granjas de Campo Alegre", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Pinos de Bella Vista", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Altos de Cañaveral", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "San José", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Los Laureles", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Campo Alegre I, II y III", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Brisas de Campo Alegre", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Cabecera del Llano", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "El Prado", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "El Pinar", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "San Diego", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "La Esmeralda", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Lebrija", "cai": "Lebrija", "codigo": "7-2", "barrio": "Villa Esperanza", "od": 2, "oe": 6, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Cabecera del Llano Etapa I y II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Ciudad Perdida", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Granadillo", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "El Mirador", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "La Colina", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Alcón de Granada", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Molinos", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Molinos del Campo", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Molinos del Viento", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "San Cristóbal", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "San Marcos", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "San Francisco", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "San Carlos", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Quinta Granada", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "San Pedro", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Villa Liseth", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-1", "barrio": "Villas de San Juan", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Divino Niño", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Callejuelas Casas", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Brisas de Guatiguará", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Bosques de Aranjuez", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Ciudadela La Argentina", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "El Paraíso I y II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "La Españolita", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Junín I, II, III y IV", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "La Diva", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "El Refugio", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Paysandú", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Portal del Talao Casas", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Río del Hato", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "Villa Valentina I, II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "San Telmo I, II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-2", "barrio": "La Argentina", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Amaral", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Argentina Antigua", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Albania", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Balcones de la Castellana", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Bariloche I y II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Coaviconsa", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Campo Verde", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Chacarita I, II y III", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Buenos Aires", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "El Trapiche", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Hoyo Chiquito", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "La Tachuela", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "La Gloria", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Las Delicias", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "La Castellana I, II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Paseo Galicia", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Paseo Cataluña", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Paseo Alcalá", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Palermo I, II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Portal del Talao Apartamentos", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Prados de Villanueva", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Puerto Madero", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Suratoque", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "San Luis", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "San Rafael", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Torres de Villa Lina", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Villa Lina", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Villa Nueva", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Villa Luz", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Villas de Navarra", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Villa Nueva del Campo", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-3", "barrio": "Villas de Santa María", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-4", "barrio": "San Antonio", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-4", "barrio": "San Rafael", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-4", "barrio": "Villas del Río", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Barro Blanco", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Brisas de Primavera I", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Brisas de Primavera II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Paseo del Puente I, II", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Portal del Valle", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "San Silvestre", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Los Cedros", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Villa Marcela", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Portal de la Hacienda", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Portal Imperial", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Mirador de Tejaditos", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Bosques de Piedecuesta", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Los Comuneros", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Cerros del Mediterráneo", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Los Cisnes", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Edimar", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Villa Mar", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Tejaditos", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Portal de Belén", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Villa María", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Cenaprom", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-5", "barrio": "Piedemonte", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "La Feria", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "La Cantera", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "Caminos del Parque", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "Villas de Andalucía", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "Villas del Rosario", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "Monserrate", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "Bellavista", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-6", "barrio": "Hoyo Grande", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-7", "barrio": "El Centro", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-7", "barrio": "La Candelaria", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-7", "barrio": "Nueva Candelaria", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-8", "barrio": "No aplica", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Piedecuesta", "cai": "Piedecuesta", "codigo": "8-9", "barrio": "No aplica", "od": 3, "oe": 7, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Los Santos", "cai": "Los Santos", "codigo": "9-1", "barrio": "Guanes", "od": 3, "oe": 8, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Los Santos", "cai": "Los Santos", "codigo": "9-1", "barrio": "San Martín", "od": 3, "oe": 8, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Los Santos", "cai": "Los Santos", "codigo": "9-2", "barrio": "No aplica", "od": 3, "oe": 8, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Aeropuerto", "cai": "Aeropuerto", "codigo": "N/A", "barrio": "Sin barrios registrados", "od": 2, "oe": 9, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Acapulco", "cai": "Acapulco", "codigo": "N/A", "barrio": "Sin barrios registrados", "od": 2, "oe": 10, "oc": 0}, {"distrito": "Distrito 4", "estacion": "Mesa de los Santos", "cai": "Mesa de los Santos", "codigo": "N/A", "barrio": "Sin barrios registrados", "od": 3, "oe": 11, "oc": 0}, {"distrito": "Distrito 3", "estacion": "Pescadero", "cai": "Pescadero", "codigo": "N/A", "barrio": "Sin barrios registrados", "od": 2, "oe": 12, "oc": 0}];
+
+/* ---------------- Normalización / búsqueda ---------------- */
+function normalize(str) {
+  return (str || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function normalizeLoose(str) { return normalize(str).replace(/-/g, ''); }
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const accentMap = { a:'[aàáâãäå]', e:'[eèéêë]', i:'[iìíîï]', o:'[oòóôõö]', u:'[uùúûü]', n:'[nñ]', c:'[cç]' };
+function buildAccentInsensitiveRegex(term) {
+  const esc = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let pattern = '';
+  for (const ch of esc.toLowerCase()) pattern += accentMap[ch] || ch;
+  return new RegExp(pattern, 'gi');
+}
+function highlight(text, rawTerms) {
+  if (!rawTerms || !rawTerms.length) return escapeHtml(text);
+  let html = escapeHtml(text);
+  rawTerms.forEach(t => { if (t) html = html.replace(buildAccentInsensitiveRegex(t), m => `<mark>${m}</mark>`); });
+  return html;
+}
+
+const DISTRITO_ORDER = ["Distrito 1", "Distrito 2", "Distrito 3", "Distrito 4"];
+function distClass(d) {
+  if (d.includes('1')) return 'd1';
+  if (d.includes('2')) return 'd2';
+  if (d.includes('3')) return 'd3';
+  if (d.includes('4')) return 'd4';
+  return '';
+}
+
+/* ---------------- Construir grupos base (uno por cuadrante) ---------------- */
+function groupKeyOf(r) { return r.distrito + '|' + r.estacion + '|' + r.cai + '|' + r.codigo; }
+
+const baseGroups = [];
+{
+  const map = {};
+  BASE_DATA.forEach(r => {
+    const k = groupKeyOf(r);
+    if (!map[k]) {
+      const g = { distrito: r.distrito, estacion: r.estacion, cai: r.cai, codigo: r.codigo,
+                  barrios: [], od: r.od, oe: r.oe, oc: r.oc, id: 'b' + baseGroups.length };
+      map[k] = g;
+      baseGroups.push(g);
+    }
+    map[k].barrios.push(r.barrio);
+  });
+}
+
+/* ---------------- Persistencia local (ediciones del usuario) ---------------- */
+const STORAGE_KEY = 'mebuc_edits_v1';
+function loadEdits() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { edited: {}, added: [] };
+    const parsed = JSON.parse(raw);
+    return { edited: parsed.edited || {}, added: parsed.added || [] };
+  } catch (e) { return { edited: {}, added: [] }; }
+}
+function saveEdits(edits) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(edits)); } catch (e) { /* almacenamiento no disponible */ }
+}
+let edits = loadEdits();
+
+function liveGroups() {
+  const out = baseGroups.map(g => {
+    const ov = edits.edited[g.id];
+    return ov ? Object.assign({}, g, { codigo: ov.codigo, barrios: ov.barrios }) : g;
+  });
+  edits.added.forEach(g => out.push(g));
+  // Ocultar placeholders "N/A" si ya existe al menos un cuadrante real para ese CAI
+  const hasReal = {};
+  out.forEach(g => {
+    if (!(g.codigo === 'N/A' && g.barrios.length === 1 && g.barrios[0] === 'Sin barrios registrados')) {
+      hasReal[g.distrito + '|' + g.estacion + '|' + g.cai] = true;
+    }
+  });
+  return out.filter(g => {
+    const isPlaceholder = (g.codigo === 'N/A' && g.barrios.length === 1 && g.barrios[0] === 'Sin barrios registrados');
+    if (isPlaceholder && hasReal[g.distrito + '|' + g.estacion + '|' + g.cai]) return false;
+    return true;
+  });
+}
+
+/* ---------------- Estado de navegación (Explorador) ---------------- */
+let selDistrito = null, selEstacion = null, selCai = null;
+
+const mainEl = document.getElementById('bMain');
+const footerInfo = document.getElementById('footerInfo');
+
+function updateFooter() {
+  const groups = liveGroups();
+  const totalBarrios = new Set();
+  let count = 0;
+  groups.forEach(g => { if (!(g.barrios.length===1 && g.barrios[0]==='Sin barrios registrados')) count += g.barrios.length; });
+  const cais = new Set(groups.map(g => g.distrito+'|'+g.estacion+'|'+g.cai));
+  footerInfo.textContent = `${count} barrios · ${groups.length} cuadrantes · ${cais.size} CAI/estaciones · ${DISTRITO_ORDER.length} distritos`;
+}
+
+function caiLabel(g) {
+  // Si el CAI es igual al nombre de la estación, no es un CAI propiamente dicho
+  if (g.cai === g.estacion) return { prefix: '', name: g.estacion.toUpperCase(), muted: true };
+  return { prefix: 'CAI ', name: g.cai.toUpperCase(), muted: false };
+}
+
+/* ---------------- Render: tarjeta de cuadrante ---------------- */
+function cuadranteCardHtml(g, rawTerms) {
+  const cl = caiLabel(g);
+  const barrioHtml = (g.barrios.length === 1 && g.barrios[0] === 'Sin barrios registrados')
+    ? `<div class="barrio-empty">Sin barrios registrados todavía.</div>`
+    : `<div class="barrios">${g.barrios.map(b => {
+        const nb = normalize(b);
+        const isHit = rawTerms && rawTerms.length && rawTerms.some(t => nb.includes(normalize(t)));
+        return `<span class="barrio-pill${isHit ? ' hit' : ''}">${highlight(b, rawTerms)}</span>`;
+      }).join('')}</div>`;
+
+  return `
+    <div class="card" data-id="${g.id}">
+      <div class="breadcrumb">
+        <span class="dtag ${distClass(g.distrito)}">${highlight(g.distrito, rawTerms)}</span>
+        <span>›</span><span>${highlight(g.estacion, rawTerms)}</span>
+      </div>
+      <div class="card-top">
+        <div class="cai-name">
+          ${cl.muted ? '' : `<span class="cai-label">CAI</span>`}
+          <span style="${cl.muted ? 'color:var(--text-faint); font-weight:700;' : ''}">${highlight(cl.name, rawTerms)}</span>
+        </div>
+        <div class="right-controls">
+          <div class="codigo-badge">${g.codigo === 'N/A' ? 'N/A' : highlight(g.codigo, rawTerms)}</div>
+          <button class="edit-btn" data-usepin="${g.id}" title="Usar este cuadrante en el PIN">📝</button>
+          <button class="edit-btn" data-edit="${g.id}" title="Editar cuadrante">✏️</button>
+        </div>
+      </div>
+      ${barrioHtml}
+    </div>
+  `;
+}
+
+/* ---------------- Búsqueda (modo texto libre) ---------------- */
+function renderSearchResults(raw) {
+  const nq = normalize(raw);
+  const nqLoose = normalizeLoose(raw);
+  const terms = nq.split(/\s+/).filter(Boolean);
+  const rawTerms = raw.split(/\s+/).filter(Boolean);
+  const groups = liveGroups();
+
+  let filtered = groups.filter(g => {
+    const hay = normalize(g.distrito + ' ' + g.estacion + ' ' + g.cai + ' ' + g.codigo + ' ' + g.barrios.join(' '));
+    const hayLoose = normalizeLoose(hay);
+    const normalMatch = terms.every(t => hay.includes(t));
+    const looseMatch = nqLoose.length > 0 && hayLoose.includes(nqLoose);
+    return normalMatch || looseMatch;
+  });
+
+  filtered.sort((a, b) => (a.od - b.od) || (a.oe - b.oe) || (a.oc - b.oc) || a.codigo.localeCompare(b.codigo, undefined, {numeric:true}));
+
+  let html = `<div class="meta-bar">${filtered.length} resultado(s)</div>`;
+  if (!filtered.length) {
+    html += `<div class="empty-state"><div class="big">🕵️</div>No se encontraron coincidencias.<br>Prueba con otro término.</div>`;
+  } else {
+    html += filtered.map(g => cuadranteCardHtml(g, rawTerms)).join('');
+  }
+  mainEl.innerHTML = html;
+}
+
+/* ---------------- Explorador jerárquico ---------------- */
+function crumbBar(parts) {
+  // parts: [{label, onClick|null}]
+  return `<div class="crumbbar">${parts.map((p, i) => {
+    const sep = i > 0 ? '<span class="crumb-sep">›</span>' : '';
+    if (p.onClick === null) return `${sep}<span class="crumb current">${escapeHtml(p.label)}</span>`;
+    return `${sep}<span class="crumb" data-crumb="${p.onClick}">${escapeHtml(p.label)}</span>`;
+  }).join('')}</div>`;
+}
+
+function renderExplorer() {
+  const groups = liveGroups();
+
+  // Paso 1: elegir distrito
+  if (!selDistrito) {
+    const distritos = DISTRITO_ORDER.filter(d => groups.some(g => g.distrito === d));
+    mainEl.innerHTML = `
+      <div class="section-label">Selecciona un distrito</div>
+      <div class="chip-grid">
+        ${distritos.map(d => `<div class="chip-btn" data-godistrito="${d}"><span class="dot" style="background:var(--${distClass(d)})"></span>${d}</div>`).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  // Paso 2: elegir estación
+  if (!selEstacion) {
+    const estOrder = [];
+    groups.forEach(g => { if (g.distrito === selDistrito && !estOrder.includes(g.estacion)) estOrder.push([g.estacion, g.oe]); });
+    const uniqueEst = [...new Map(estOrder).entries()].sort((a,b) => a[1]-b[1]).map(e => e[0]);
+    mainEl.innerHTML = `
+      ${crumbBar([{label: selDistrito, onClick: 'root'}])}
+      <div class="section-label">Selecciona una estación</div>
+      <div class="chip-grid">
+        ${uniqueEst.map(e => `<div class="chip-btn" data-goestacion="${e}"><span class="dot" style="background:var(--${distClass(selDistrito)})"></span>${e}</div>`).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  // Paso 3: elegir CAI (sin duplicados)
+  if (!selCai) {
+    const seen = new Map(); // cai -> {count, oc}
+    groups.forEach(g => {
+      if (g.distrito === selDistrito && g.estacion === selEstacion) {
+        const isPlaceholder = (g.barrios.length===1 && g.barrios[0]==='Sin barrios registrados');
+        if (!seen.has(g.cai)) seen.set(g.cai, { count: 0, oc: g.oc });
+        if (!isPlaceholder) seen.get(g.cai).count++;
+      }
+    });
+    const caisSorted = [...seen.entries()].sort((a,b) => a[1].oc - b[1].oc);
+    mainEl.innerHTML = `
+      ${crumbBar([{label: selDistrito, onClick: 'root'}, {label: selEstacion, onClick: 'distrito'}])}
+      <div class="section-label">CAI de la estación ${escapeHtml(selEstacion)}</div>
+      <div class="cai-list">
+        ${caisSorted.map(([cai, info]) => {
+          const isStation = cai === selEstacion;
+          return `<div class="cai-item" data-gocai="${escapeHtml(cai)}">
+            <div>
+              <div class="nm">${isStation ? escapeHtml(cai) : 'CAI ' + escapeHtml(cai.toUpperCase())}</div>
+              <div class="cnt">${info.count} cuadrante${info.count === 1 ? '' : 's'}</div>
+            </div>
+            <div class="arrow">›</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  // Paso 4: cuadrantes de ese CAI
+  {
+    const cuadrantes = groups
+      .filter(g => g.distrito === selDistrito && g.estacion === selEstacion && g.cai === selCai)
+      .sort((a,b) => a.codigo.localeCompare(b.codigo, undefined, {numeric:true}));
+
+    const isStation = selCai === selEstacion;
+    mainEl.innerHTML = `
+      ${crumbBar([
+        {label: selDistrito, onClick: 'root'},
+        {label: selEstacion, onClick: 'distrito'},
+        {label: isStation ? selCai : 'CAI ' + selCai, onClick: null}
+      ])}
+      <div class="section-label">Cuadrantes</div>
+      ${cuadrantes.map(g => cuadranteCardHtml(g, [])).join('')}
+      <button class="add-btn" id="addCuadranteBtn">+ Agregar cuadrante a ${isStation ? escapeHtml(selCai) : 'CAI ' + escapeHtml(selCai)}</button>
+    `;
+  }
+}
+
+/* ---------------- Router principal ---------------- */
+function render() {
+  updateFooter();
+  const raw = document.getElementById('q').value.trim();
+  document.getElementById('clearBtn').style.display = raw ? 'flex' : 'none';
+  if (raw) { renderSearchResults(raw); return; }
+  renderExplorer();
+}
+
+/* ---------------- Delegación de eventos ---------------- */
+mainEl.addEventListener('click', (e) => {
+  const distBtn = e.target.closest('[data-godistrito]');
+  if (distBtn) { selDistrito = distBtn.dataset.godistrito; selEstacion = null; selCai = null; render(); return; }
+
+  const estBtn = e.target.closest('[data-goestacion]');
+  if (estBtn) { selEstacion = estBtn.dataset.goestacion; selCai = null; render(); return; }
+
+  const caiBtn = e.target.closest('[data-gocai]');
+  if (caiBtn) { selCai = caiBtn.dataset.gocai; render(); return; }
+
+  const crumb = e.target.closest('[data-crumb]');
+  if (crumb) {
+    const to = crumb.dataset.crumb;
+    if (to === 'root') { selDistrito = null; selEstacion = null; selCai = null; }
+    else if (to === 'distrito') { selEstacion = null; selCai = null; }
+    render();
+    return;
+  }
+
+  const pinBtn = e.target.closest('[data-usepin]');
+  if (pinBtn) { const g = liveGroups().find(x => x.id === pinBtn.dataset.usepin); if (g) usarCuadranteEnPin(g); return; }
+
+  const editBtn = e.target.closest('[data-edit]');
+  if (editBtn) { openEditModal(editBtn.dataset.edit); return; }
+
+  const addBtn = e.target.closest('#addCuadranteBtn');
+  if (addBtn) { openAddModal(); return; }
+});
+
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('q').value = ''; render(); document.getElementById('q').focus();
+});
+
+/* ---------------- Modal: editar cuadrante ---------------- */
+const editOverlay = document.getElementById('editOverlay');
+const confirmOverlay = document.getElementById('confirmOverlay');
+let modalMode = null; // 'edit' | 'add'
+let modalContext = null; // group id (edit) or {distrito,estacion,cai,od,oe,oc} (add)
+
+function openEditModal(groupId) {
+  const g = liveGroups().find(x => x.id === groupId);
+  if (!g) return;
+  modalMode = 'edit';
+  modalContext = g;
+  document.getElementById('editTitle').textContent = 'Editar cuadrante';
+  document.getElementById('editSub').textContent = `${g.distrito} · ${g.estacion} · ${g.cai === g.estacion ? g.cai : 'CAI ' + g.cai}`;
+  document.getElementById('editCodigo').value = g.codigo === 'N/A' ? '' : g.codigo;
+  document.getElementById('editBarrios').value = (g.barrios.length===1 && g.barrios[0]==='Sin barrios registrados') ? '' : g.barrios.join('\n');
+  editOverlay.classList.add('open');
+}
+
+function openAddModal() {
+  // contexto: usar el primer grupo visible de ese CAI para heredar od/oe/oc, o construirlo si no existe ninguno
+  const groups = liveGroups();
+  let ref = groups.find(g => g.distrito === selDistrito && g.estacion === selEstacion && g.cai === selCai);
+  if (!ref) ref = { od: 0, oe: 0, oc: 0 };
+  modalMode = 'add';
+  modalContext = { distrito: selDistrito, estacion: selEstacion, cai: selCai, od: ref.od, oe: ref.oe, oc: ref.oc };
+  document.getElementById('editTitle').textContent = 'Agregar cuadrante';
+  document.getElementById('editSub').textContent = `${selDistrito} · ${selEstacion} · ${selCai === selEstacion ? selCai : 'CAI ' + selCai}`;
+  document.getElementById('editCodigo').value = '';
+  document.getElementById('editBarrios').value = '';
+  editOverlay.classList.add('open');
+}
+
+function closeEditModal() { editOverlay.classList.remove('open'); modalMode = null; modalContext = null; }
+
+document.getElementById('editCancelBtn').addEventListener('click', closeEditModal);
+editOverlay.addEventListener('click', (e) => { if (e.target === editOverlay) closeEditModal(); });
+
+document.getElementById('editSaveBtn').addEventListener('click', () => {
+  const codigo = document.getElementById('editCodigo').value.trim() || 'N/A';
+  const barriosRaw = document.getElementById('editBarrios').value;
+  const barrios = barriosRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  const finalBarrios = barrios.length ? barrios : ['Sin barrios registrados'];
+
+  const label = modalMode === 'edit'
+    ? `¿Confirmas guardar los cambios en el cuadrante <b>${escapeHtml(codigo)}</b> de <b>${escapeHtml(modalContext.cai === modalContext.estacion ? modalContext.cai : 'CAI ' + modalContext.cai)}</b>?`
+    : `¿Confirmas agregar el cuadrante <b>${escapeHtml(codigo)}</b> a <b>${escapeHtml(modalContext.cai === modalContext.estacion ? modalContext.cai : 'CAI ' + modalContext.cai)}</b>?`;
+
+  askConfirm(label, () => {
+    if (modalMode === 'edit') {
+      edits.edited[modalContext.id] = { codigo, barrios: finalBarrios };
+    } else if (modalMode === 'add') {
+      edits.added.push({
+        id: 'a' + Date.now() + Math.floor(Math.random()*1000),
+        distrito: modalContext.distrito, estacion: modalContext.estacion, cai: modalContext.cai,
+        codigo, barrios: finalBarrios,
+        od: modalContext.od, oe: modalContext.oe, oc: modalContext.oc
+      });
+    }
+    saveEdits(edits);
+    closeEditModal();
+    render();
+  });
+});
+
+/* ---------------- Modal: confirmación genérica ---------------- */
+let pendingConfirm = null;
+function askConfirm(htmlMsg, onConfirm) {
+  document.getElementById('confirmText').innerHTML = htmlMsg;
+  pendingConfirm = onConfirm;
+  confirmOverlay.classList.add('open');
+}
+document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+  confirmOverlay.classList.remove('open'); pendingConfirm = null;
+});
+confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverlay) { confirmOverlay.classList.remove('open'); pendingConfirm = null; } });
+document.getElementById('confirmOkBtn').addEventListener('click', () => {
+  confirmOverlay.classList.remove('open');
+  if (pendingConfirm) pendingConfirm();
+  pendingConfirm = null;
+});
+
+/* ---------------- Restablecer ediciones locales ---------------- */
+document.getElementById('resetLink').addEventListener('click', () => {
+  askConfirm('¿Confirmas <b>restablecer</b> todas tus ediciones y cuadrantes agregados manualmente? Esta acción no se puede deshacer.', () => {
+    edits = { edited: {}, added: [] };
+    saveEdits(edits);
+    render();
+  });
+});
+
+render();
+
+})();
+
+</script>
+
+<script>
+/* Portón de instalación (solo en navegador web) */
+(function(){
+  if (document.documentElement.classList.contains('is-installed')) return;
+  var gatePrompt = null;
+  var gate = document.getElementById('install-gate');
+  var btn = document.getElementById('gate-btn');
+  var title = document.getElementById('gate-title');
+  var text = document.getElementById('gate-text');
+
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    gatePrompt = e;
+    btn.style.display = 'inline-block';
+  });
+  window.addEventListener('appinstalled', function(){
+    btn.style.display = 'none';
+    title.textContent = '✅ App instalada';
+    text.textContent = 'Cierra esta pestaña del navegador y abre la app desde el ícono agregado a tu pantalla de inicio.';
+  });
+  btn.addEventListener('click', function(){
+    if (!gatePrompt) return;
+    gatePrompt.prompt();
+    gatePrompt.userChoice.then(function(choice){
+      if (choice.outcome !== 'accepted') {
+        gate.classList.add('blocked');
+        title.textContent = '🚫 Debes instalar para continuar';
+        text.textContent = 'Esta aplicación solo puede usarse una vez instalada en tu dispositivo. Toca el botón para intentar de nuevo.';
+      }
+      gatePrompt = null;
+    });
+  });
+  setTimeout(function(){
+    if (!gatePrompt) {
+      btn.style.display = 'none';
+      title.textContent = '📲 Abre la app desde tu pantalla de inicio';
+      text.textContent = 'Si ya la instalaste, ábrela desde su ícono. Si no, usa el menú de tu navegador y elige "Agregar a pantalla de inicio" o "Instalar aplicación".';
+    }
+  }, 1200);
+})();
+</script>
+
+<script src="config-actualizacion.js"></script>
+<script>
+/* ======================= ACTUALIZACIÓN OBLIGATORIA (APK) =======================
+   1. Al abrir, compara la versión instalada con la última "Release" del repositorio en GitHub.
+   2. Si hay una más nueva, bloquea la app hasta instalarla.
+   3. Descarga la APK, Android la instala encima, la app se cierra y se vuelve a abrir.
+   4. En el primer arranque de la versión nueva se borran los restos de la anterior. */
+(function(){
+  var C = window.Capacitor;
+  var esAndroid = C && C.getPlatform && C.getPlatform() === 'android';
+  if (!esAndroid) return;
+
+  var nat = function(metodo, opciones){ return C.nativePromise('Actualizador', metodo, opciones || {}); };
+  var $ = function(id){ return document.getElementById(id); };
+  var urlApk = null, mostrando = false, ultimaRevision = 0, esperaPermiso = null, versionActual = 0;
+
+  // Datos que se conservan entre versiones (cuadrantes editados en el Buscador)
+  var CONSERVAR = ['mebuc_edits_v1'];
+
+  function estado(txt, error){ var e=$('updEstado'); e.textContent = txt || ''; e.classList.toggle('err', !!error); }
+  function barra(pct){ $('updBar').style.display = 'block'; $('updBar').firstElementChild.style.width = pct + '%'; }
+  function boton(txt, activo){ var b=$('updBtn'); b.textContent = txt; b.disabled = !activo; }
+
+  async function limpiarVersionAnterior(){
+    try { await nat('limpiar'); } catch(e){}
+    try {
+      var guardar = {};
+      CONSERVAR.forEach(function(k){ var v = localStorage.getItem(k); if (v !== null) guardar[k] = v; });
+      localStorage.clear(); sessionStorage.clear();
+      Object.keys(guardar).forEach(function(k){ localStorage.setItem(k, guardar[k]); });
+    } catch(e){}
+    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } } catch(e){}
+  }
+
+  async function revisar(){
+    if (mostrando || !window.MEBUC_REPO) return;
+    ultimaRevision = Date.now();
+    try {
+      var r = await fetch('https://api.github.com/repos/' + window.MEBUC_REPO + '/releases/latest', { cache: 'no-store' });
+      if (!r.ok) return;
+      var rel = await r.json();
+      var nueva = parseInt(String(rel.tag_name || '').replace(/\D/g, ''), 10);
+      var apk = (rel.assets || []).find(function(a){ return /\.apk$/i.test(a.name); });
+      if (!nueva || !apk || nueva <= versionActual) return;
+      urlApk = apk.browser_download_url;
+      mostrando = true;
+      $('updVer').textContent = 'Versión ' + versionActual + '  →  ' + nueva;
+      $('updNotas').textContent = (rel.body || '').trim();
+      $('upd').classList.add('open');
+      if (document.activeElement) document.activeElement.blur();
+    } catch(e) { /* sin internet: se deja usar la versión actual */ }
+  }
+
+  async function instalar(){
+    boton('Preparando…', false); estado('');
+    try {
+      var p = await nat('puedeInstalar');
+      if (!p.permitido) {
+        $('updTxt').innerHTML = '<b>Paso único:</b> Android pedirá que permitas a MEBUC instalar actualizaciones.<br>Activa <b>"Permitir de esta fuente"</b> y vuelve a la app.';
+        boton('⚙️ Dar permiso', true);
+        $('updBtn').onclick = async function(){
+          try { await nat('abrirPermisoInstalar'); } catch(e){}
+          clearInterval(esperaPermiso);
+          esperaPermiso = setInterval(async function(){
+            try { var q = await nat('puedeInstalar'); if (q.permitido) { clearInterval(esperaPermiso); $('updBtn').onclick = instalar; $('updTxt').textContent = 'Permiso concedido. Instalando la actualización…'; instalar(); } } catch(e){}
+          }, 1000);
+        };
+        return;
+      }
+      nat('pedirNotificaciones').catch(function(){});
+      $('updTxt').textContent = 'No cierres la app mientras se descarga.';
+      boton('Descargando…', false); barra(0); estado('Descargando 0%');
+      await nat('descargarEInstalar', { url: urlApk });
+    } catch(e) {
+      estado((e && e.message) || 'No se pudo descargar la actualización. Revisa tu conexión.', true);
+      boton('🔄 Reintentar', true);
+    }
+  }
+
+  C.addListener('Actualizador', 'progreso', function(d){
+    if (!d) return;
+    if (d.estado === 'descargando') { barra(d.porcentaje); estado('Descargando ' + d.porcentaje + '%'); }
+    else if (d.estado === 'instalando') { barra(100); boton('Instalando…', false); estado('Instalando… MEBUC se cerrará y se abrirá sola con la nueva versión.'); }
+    else if (d.estado === 'cancelado') { $('updTxt').textContent = 'Debes instalar la actualización para seguir usando MEBUC.'; estado('Instalación cancelada. Toca el botón para intentarlo de nuevo.', true); boton('📲 Instalar actualización', true); }
+    else if (d.estado === 'error') { estado(d.mensaje || 'Falló la instalación.', true); boton('🔄 Reintentar', true); }
+  });
+
+  $('updBtn').onclick = instalar;
+
+  (async function iniciar(){
+    try {
+      var info = await nat('info');
+      versionActual = Number(info.versionCode) || 0;
+      $('appVersion').textContent = ' · v' + versionActual;
+      var previa = Number(localStorage.getItem('mebuc_version') || 0);
+      if (previa && previa !== versionActual) {
+        await limpiarVersionAnterior();
+        setTimeout(function(){ mostrarToast('✅ MEBUC actualizada a la versión ' + versionActual); }, 600);
+      }
+      try { localStorage.setItem('mebuc_version', String(versionActual)); } catch(e){}
+    } catch(e) { return; }
+    revisar();
+  })();
+
+  // Al volver a la app después de un rato, revisar de nuevo (máx. cada 10 min)
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible' && Date.now() - ultimaRevision > 10 * 60 * 1000) revisar();
+  });
+})();
+</script>
+
+<script>
+/* Service Worker: solo en la versión web (la APK ya trae los archivos dentro) */
+if ('serviceWorker' in navigator && !window.ES_NATIVO) {
+  navigator.serviceWorker.register('sw.js')
+    .then(r => console.log('SW registrado:', r.scope))
+    .catch(e => console.error('SW falló:', e));
+  navigator.serviceWorker.addEventListener('message', evt => {
+    if (evt.data && evt.data.type === 'NEW_VERSION') {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:3500;background:linear-gradient(135deg,#0f2027,#1a3a6e);border-top:3px solid #f9a825;padding:14px 18px calc(14px + env(safe-area-inset-bottom,0px));text-align:center;box-shadow:0 -4px 24px rgba(0,0,0,.5);font-family:inherit;';
+      banner.innerHTML = '<p style="color:#e0eaf5;margin-bottom:10px;font-size:13px;">🔄 Hay una nueva versión disponible</p><button style="background:#f9a825;color:#0f2027;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">Actualizar ahora</button>';
+      banner.querySelector('button').onclick = () => location.reload();
+      document.body.appendChild(banner);
+    }
+  });
+}
+</script>
+</body>
+</html>
