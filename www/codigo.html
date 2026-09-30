@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>MEBUC · Cambiar código</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(140deg,#0f2027,#1a3a6e 55%,#2c5364);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#1a1f2e;}
+  .card{background:#fff;border-radius:18px;max-width:460px;width:100%;padding:26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  h1{font-size:1.2em;color:#1a3a6e;margin-bottom:6px;}
+  p{font-size:.88em;color:#3d4560;line-height:1.5;margin-bottom:16px;}
+  label{display:block;font-size:.75em;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#243f7a;margin:12px 0 5px;}
+  input[type=password],input[type=text]{width:100%;padding:12px;border:1.5px solid #d8dce8;border-radius:10px;font-size:1.1em;font-family:inherit;}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.88em;}
+  button{width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;font-weight:800;font-size:1em;cursor:pointer;font-family:inherit;
+    background:linear-gradient(135deg,#1a3a6e,#1565c0);color:#fff;}
+  button.sec{background:linear-gradient(135deg,#00695c,#00897b);}
+  pre{margin-top:16px;background:#f4f6f9;border:2px solid #1a3a6e;border-radius:12px;padding:12px;font-size:.78em;white-space:pre-wrap;word-break:break-all;}
+  .err{color:#b71c1c;font-weight:700;font-size:.88em;margin-top:10px;}
+  ol{font-size:.86em;color:#3d4560;padding-left:18px;margin-top:14px;line-height:1.6;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🔐 Cambiar código de acceso</h1>
+  <p>Escribe el código nuevo. Esta página <b>no guarda ni envía</b> nada: solo genera el texto que debes pegar en <b>acceso.json</b> en GitHub.</p>
+
+  <label>Código nuevo</label>
+  <input id="c1" type="password" autocomplete="new-password">
+  <label>Repite el código</label>
+  <input id="c2" type="password" autocomplete="new-password">
+  <div class="chk"><input type="checkbox" id="num" checked><span>Solo números (teclado numérico en el celular)</span></div>
+
+  <button id="gen">Generar</button>
+  <div class="err" id="err"></div>
+
+  <div id="res" class="hidden">
+    <pre id="json"></pre>
+    <button class="sec" id="copiar">📋 Copiar texto</button>
+    <ol>
+      <li>En GitHub abre el archivo <b>acceso.json</b> (página principal del repositorio).</li>
+      <li>Toca el lápiz ✏️, borra todo (Ctrl + A, Suprimir) y pega el texto copiado.</li>
+      <li>Toca <b>Commit changes</b>.</li>
+      <li>En unos 5 minutos, todos los celulares pedirán el código nuevo al abrir la app.</li>
+    </ol>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$('gen').onclick=async()=>{
+  $('err').textContent='';$('res').classList.add('hidden');
+  const a=$('c1').value.trim(), b=$('c2').value.trim(), soloNum=$('num').checked;
+  if(a.length<6){$('err').textContent='El código debe tener mínimo 6 caracteres (recomendado 8 o más).';return;}
+  if(a!==b){$('err').textContent='Los dos códigos no coinciden.';return;}
+  if(soloNum&&!/^\d+$/.test(a)){$('err').textContent='Marcaste "solo números" pero el código tiene letras.';return;}
+  $('gen').textContent='Generando…';$('gen').disabled=true;
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const it=310000;
+    const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(a),'PBKDF2',false,['deriveBits']);
+    const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:it},k,256);
+    const hex=u=>Array.from(new Uint8Array(u)).map(x=>x.toString(16).padStart(2,'0')).join('');
+    const cfg={version:Date.now(),salt:hex(salt),iteraciones:it,hash:hex(bits),soloNumeros:soloNum};
+    $('json').textContent=JSON.stringify(cfg,null,2);
+    $('res').classList.remove('hidden');
+    $('c1').value='';$('c2').value='';
+  }catch(e){$('err').textContent='Tu navegador no pudo generar el código: '+e.message;}
+  $('gen').textContent='Generar';$('gen').disabled=false;
+};
+$('copiar').onclick=()=>{
+  const t=$('json').textContent;
+  navigator.clipboard.writeText(t).then(()=>{$('copiar').textContent='✅ Copiado';setTimeout(()=>$('copiar').textContent='📋 Copiar texto',2000);})
+  .catch(()=>{const r=document.createRange();r.selectNodeContents($('json'));const s=getSelection();s.removeAllRanges();s.addRange(r);});
+};
+</script>
+</body>
+</html>
