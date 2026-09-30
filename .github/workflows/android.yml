@@ -8,6 +8,8 @@ on:
       - 'android/**'
       - 'capacitor.config.json'
       - 'package.json'
+      - 'icono.png'
+      - 'generar-iconos.py'
       - '.github/workflows/android.yml'
   workflow_dispatch:
 
@@ -42,6 +44,15 @@ jobs:
 
       - name: Configurar repositorio de actualizaciones
         run: echo "window.MEBUC_REPO = \"${{ github.repository }}\";" > www/config-actualizacion.js
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generar íconos desde icono.png
+        run: |
+          pip install pillow
+          python generar-iconos.py
 
       - name: Instalar dependencias
         run: npm install
