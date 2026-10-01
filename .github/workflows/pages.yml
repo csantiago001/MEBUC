@@ -1,14 +1,20 @@
 name: Publicar versión web (GitHub Pages)
 
+# Publica la versión OFICIAL (rama main) en  .../MEBUC/
+# y la versión de PRUEBAS (rama pruebas) en  .../MEBUC/pruebas/
 on:
   push:
-    branches: [ main ]
+    branches: [ main, pruebas ]
   workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -17,17 +23,42 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Descargar versión oficial (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: oficial
+
+      - name: Descargar versión de pruebas (pruebas)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: pruebas
+          path: pruebas
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Generar íconos desde icono.png
+
+      - name: Armar el sitio
         run: |
           pip install pillow
-          python generar-iconos.py
+          mkdir -p sitio
+          (cd oficial && CANAL=oficial python generar-iconos.py)
+          cp -r oficial/www/. sitio/
+          printf 'window.MEBUC_REPO = "%s";\nwindow.MEBUC_CANAL = "oficial";\n' "${{ github.repository }}" > sitio/config-actualizacion.js
+          if [ -f pruebas/www/index.html ]; then
+            (cd pruebas && CANAL=pruebas python generar-iconos.py)
+            mkdir -p sitio/pruebas
+            cp -r pruebas/www/. sitio/pruebas/
+            printf 'window.MEBUC_REPO = "%s";\nwindow.MEBUC_CANAL = "pruebas";\n' "${{ github.repository }}" > sitio/pruebas/config-actualizacion.js
+            sed -i 's/"name": "[^"]*"/"name": "MEBUC Pruebas"/; s/"short_name": "[^"]*"/"short_name": "MEBUC Pruebas"/' sitio/pruebas/manifest.json
+            sed -i 's/name="apple-mobile-web-app-title" content="MEBUC"/name="apple-mobile-web-app-title" content="MEBUC Pruebas"/' sitio/pruebas/index.html
+          fi
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: www
+          path: sitio
       - id: deployment
         uses: actions/deploy-pages@v4

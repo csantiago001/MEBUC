@@ -1,8 +1,10 @@
 name: Publicar actualización Android (APK)
 
+# main    -> versión OFICIAL (le llega a todos los usuarios)
+# pruebas -> versión de PRUEBAS "MEBUC Pruebas" (app aparte, solo para probar)
 on:
   push:
-    branches: [ main ]
+    branches: [ main, pruebas ]
     paths:
       - 'www/**'
       - 'android/**'
@@ -42,8 +44,19 @@ jobs:
           fi
           echo "$KS" | base64 -d > "$RUNNER_TEMP/mebuc.jks"
 
-      - name: Configurar repositorio de actualizaciones
-        run: echo "window.MEBUC_REPO = \"${{ github.repository }}\";" > www/config-actualizacion.js
+      - name: Definir canal (oficial o pruebas)
+        run: |
+          if [ "$GITHUB_REF_NAME" = "pruebas" ]; then echo "CANAL=pruebas" >> "$GITHUB_ENV"; else echo "CANAL=oficial" >> "$GITHUB_ENV"; fi
+
+      - name: Configurar la app
+        run: |
+          printf 'window.MEBUC_REPO = "%s";\nwindow.MEBUC_CANAL = "%s";\n' "${{ github.repository }}" "$CANAL" > www/config-actualizacion.js
+
+      - name: Convertir en app de pruebas
+        if: env.CANAL == 'pruebas'
+        run: |
+          sed -i 's/applicationId "co.mebuc.pin"/applicationId "co.mebuc.pin.pruebas"/' android/app/build.gradle
+          sed -i 's#<string name="app_name">MEBUC</string>#<string name="app_name">MEBUC Pruebas</string>#; s#<string name="title_activity_main">MEBUC</string>#<string name="title_activity_main">MEBUC Pruebas</string>#' android/app/src/main/res/values/strings.xml
 
       - uses: actions/setup-python@v5
         with:
@@ -68,9 +81,14 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=${{ github.run_number }}
-          cp app/build/outputs/apk/release/app-release.apk ../MEBUC.apk
+          if [ "$CANAL" = "pruebas" ]; then
+            cp app/build/outputs/apk/release/app-release.apk ../MEBUC-Pruebas.apk
+          else
+            cp app/build/outputs/apk/release/app-release.apk ../MEBUC.apk
+          fi
 
-      - name: Publicar versión (Release)
+      - name: Publicar versión OFICIAL
+        if: env.CANAL == 'oficial'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
@@ -78,3 +96,15 @@ jobs:
           body: ${{ github.event.head_commit.message || 'Actualización de MEBUC' }}
           files: MEBUC.apk
           make_latest: true
+
+      - name: Publicar versión de PRUEBAS
+        if: env.CANAL == 'pruebas'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pruebas-v${{ github.run_number }}
+          target_commitish: pruebas
+          name: MEBUC PRUEBAS versión ${{ github.run_number }}
+          body: ${{ github.event.head_commit.message || 'Versión de pruebas' }}
+          files: MEBUC-Pruebas.apk
+          prerelease: true
+          make_latest: false
