@@ -941,6 +941,48 @@ async function direccionOSM(lat,lng){
   }finally{clearTimeout(t);}
 }
 
+// Busca las vías con nombre alrededor del punto y devuelve [{nombre, distancia}] ordenadas por cercanía
+async function viasCercanas(lat,lng){
+  const q='[out:json][timeout:12];way(around:120,'+lat+','+lng+')[highway][name];out tags geom;';
+  const servidores=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  for(const srv of servidores){
+    const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),12000);
+    try{
+      const r=await fetch(srv,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
+      if(!r.ok)continue;
+      const d=await r.json();
+      const la=+lat,lo=+lng,kx=111320*Math.cos(la*Math.PI/180),ky=110540;
+      const distSeg=(a,b)=>{ // distancia en metros del punto al segmento a-b
+        const ax=(a.lon-lo)*kx,ay=(a.lat-la)*ky,bx=(b.lon-lo)*kx,by=(b.lat-la)*ky;
+        const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+        let t=l2?-(ax*dx+ay*dy)/l2:0;t=Math.max(0,Math.min(1,t));
+        const px=ax+t*dx,py=ay+t*dy;return Math.sqrt(px*px+py*py);
+      };
+      const mejor={};
+      (d.elements||[]).forEach(w=>{
+        const n=w.tags&&w.tags.name;const g=w.geometry||[];if(!n||g.length<2)return;
+        let m=Infinity;for(let i=1;i<g.length;i++)m=Math.min(m,distSeg(g[i-1],g[i]));
+        if(!(n in mejor)||m<mejor[n])mejor[n]=m;
+      });
+      return Object.keys(mejor).map(n=>({nombre:n,distancia:mejor[n]})).sort((a,b)=>a.distancia-b.distancia);
+    }catch(e){/* probar el siguiente servidor */}finally{clearTimeout(t);}
+  }
+  return [];
+}
+// Tipo de vía: CALLE, CARRERA, DIAGONAL, TRANSVERSAL, AVENIDA...
+function tipoVia(n){return normalizarTxt(n).split(/\s+/)[0]||'';}
+
+// Arma "Calle 45 con Carrera 27" a partir de la vía principal y las cercanas
+function armarCruce(principal,vias){
+  if(!vias.length)return principal||'';
+  const np=normalizarTxt(principal);
+  let base=vias.find(v=>normalizarTxt(v.nombre)===np)||vias[0];
+  const otras=vias.filter(v=>v.nombre!==base.nombre&&v.distancia<=90);
+  // Preferir una vía de otro tipo (Calle con Carrera); si no, la más cercana
+  const cruce=otras.find(v=>tipoVia(v.nombre)!==tipoVia(base.nombre))||otras.find(v=>v.distancia<=60);
+  return cruce?base.nombre+' con '+cruce.nombre:base.nombre;
+}
+
 async function usarUbicacion(){
   const btn=document.getElementById('btnGps');
   if(!navigator.geolocation){gpsEstado('Este celular no permite obtener la ubicación.',true);return;}
@@ -954,9 +996,13 @@ async function usarUbicacion(){
     if(!d||d.error){gpsEstado('No se encontró una dirección para este punto. Escríbela a mano.',true);return;}
     const via=a.road||a.pedestrian||a.footway||a.path||'';
     const numero=a.house_number||'';
+    gpsEstado('Buscando la calle y la carrera…');
+    const vias=await viasCercanas(lat,lng);
     const barrio=a.neighbourhood||a.suburb||a.quarter||a.residential||a.hamlet||'';
     const municipio=a.city||a.town||a.village||a.municipality||a.county||'';
-    let direccion=via?(via+(numero?' # '+numero:'')):String(d.display_name||'').split(',').slice(0,2).join(',');
+    let direccion=armarCruce(via,vias);
+    if(!direccion)direccion=String(d.display_name||'').split(',').slice(0,2).join(',');
+    else if(numero&&direccion===via)direccion=via+' # '+numero;
     const texto=(direccion+(barrio?' del barrio '+barrio:'')).trim();
     document.getElementById('lugar').value=texto;
     // Municipio sugerido
