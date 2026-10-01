@@ -13,6 +13,7 @@
   window.ES_NATIVO = nativo;
 })();
 </script>
+<script src="config-actualizacion.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <link rel="manifest" href="manifest.json">
@@ -274,9 +275,29 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
 .vb .confirm-icon{font-size:30px;text-align:center;margin-bottom:8px;}
 .vb .confirm-text{text-align:center;font-size:14.5px;color:var(--text);line-height:1.45;margin-bottom:4px;}
 
+/* ===== Imagen de inicio ===== */
+#inicio{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;
+  background:#0f2027 url("icon-192.png") center/96px no-repeat;transition:opacity .6s ease;}
+#inicio img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s ease;}
+#inicio img.lista{opacity:1;}
+#inicio.saliendo{opacity:0;pointer-events:none;}
+html:not(.is-installed) #inicio{display:none;}
+/* ===== Cinta de versión de pruebas ===== */
+#cintaPruebas{display:none;position:fixed;top:0;left:0;right:0;z-index:9800;background:#e65100;color:#fff;text-align:center;
+  font-size:11px;font-weight:800;letter-spacing:1px;padding:calc(2px + env(safe-area-inset-top,0px)) 0 2px;pointer-events:none;}
+html.canal-pruebas #cintaPruebas{display:block;}
+/* ===== Ubicación GPS ===== */
+.gps-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
+.btn-gps{background:linear-gradient(135deg,#0d47a1,#1976d2);color:#fff;box-shadow:0 2px 8px rgba(13,71,161,.25);}
+.btn-gps:disabled{opacity:.6;}
+.gps-estado{font-size:.8em;color:var(--texto2);flex:1;min-width:150px;}
+.gps-estado.err{color:var(--rojo);font-weight:600;}
+.zap-sugerida{font-size:.8em;color:#0d47a1;background:#e8f0fe;border:1px solid #90caf9;border-radius:8px;padding:6px 10px;margin-top:6px;}
+.zap-sugerida:empty{display:none;}
+
 /* ===== Código de acceso ===== */
 #acceso{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;padding:24px;
-  background:linear-gradient(140deg,#0f2027 0%,#1a3a6e 55%,#2c5364 100%);color:#fff;text-align:center;}
+  background:linear-gradient(rgba(8,18,28,.55),rgba(8,18,28,.82)),var(--fondo-url,none) center/cover no-repeat,linear-gradient(140deg,#0f2027 0%,#1a3a6e 55%,#2c5364 100%);color:#fff;text-align:center;}
 #acceso.open{display:flex;}
 #acceso .acc-card{width:100%;max-width:340px;}
 #acceso .acc-logo{width:84px;height:84px;margin:0 auto 18px;border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.35);}
@@ -326,6 +347,59 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
 </style>
 </head>
 <body>
+<!-- Imagen de inicio (fondo.jpg del repositorio; se actualiza sola) -->
+<div id="inicio"><img id="inicioImg" alt=""></div>
+<div id="cintaPruebas">VERSIÓN DE PRUEBAS</div>
+<script>
+/* ======================= CONFIG REMOTA + IMAGEN DE INICIO =======================
+   Archivos que se leen de la rama main del repositorio (sin publicar APK nueva):
+   - config.json : segundos de la imagen de inicio (opcional; 5 por defecto)
+   - fondo.jpg   : imagen de inicio y fondo de la pantalla del código */
+(function(){
+  var REPO = window.MEBUC_REPO || 'csantiago001/MEBUC';
+  window.MEBUC_RAW = 'https://raw.githubusercontent.com/' + REPO + '/main/';
+  if ((window.MEBUC_CANAL || 'oficial') === 'pruebas') document.documentElement.classList.add('canal-pruebas');
+
+  // Configuración remota (se guarda para usarla sin internet)
+  window.MEBUC_CONFIG = fetch(window.MEBUC_RAW + 'config.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){ if (!r.ok) throw new Error('config'); return r.json(); })
+    .then(function(c){ try { localStorage.setItem('mebuc_config', JSON.stringify(c)); } catch(e){} return c; })
+    .catch(function(){ try { return JSON.parse(localStorage.getItem('mebuc_config') || '{}'); } catch(e){ return {}; } });
+
+  var inicio = document.getElementById('inicio'), img = document.getElementById('inicioImg');
+  var CACHE = 'mebuc-fondo', yaMostrada = false;
+  function aplicar(blob){
+    var u = URL.createObjectURL(blob);
+    img.onload = function(){ img.classList.add('lista'); };
+    img.src = u; yaMostrada = true;
+    document.documentElement.style.setProperty('--fondo-url', 'url("' + u + '")');
+  }
+  // 1) Mostrar al instante la imagen guardada
+  var guardada = (window.caches ? caches.open(CACHE).then(function(c){ return c.match('fondo'); }) : Promise.resolve(null))
+    .then(function(r){ return r ? r.blob() : null; })
+    .then(function(b){ if (b) aplicar(b); })
+    .catch(function(){});
+  // 2) Descargar la versión actual de GitHub (si cambió, se verá desde ya o la próxima vez)
+  guardada.then(function(){
+    return fetch(window.MEBUC_RAW + 'fondo.jpg?t=' + Date.now(), { cache: 'no-store' });
+  }).then(function(r){
+    if (!r || !r.ok) return null;
+    return r.blob();
+  }).then(function(b){
+    if (!b || b.size < 1000) return;
+    if (!yaMostrada) aplicar(b);
+    if (window.caches) caches.open(CACHE).then(function(c){ return c.put('fondo', new Response(b, { headers: { 'Content-Type': b.type || 'image/jpeg' } })); }).catch(function(){});
+  }).catch(function(){});
+
+  // 3) Ocultar la imagen de inicio después de unos segundos (5 por defecto; se cambia en config.json)
+  var seg = 5;
+  try { var c = JSON.parse(localStorage.getItem('mebuc_config') || '{}'); if (c.segundosInicio >= 0) seg = +c.segundosInicio; } catch(e){}
+  setTimeout(function(){
+    inicio.classList.add('saliendo');
+    setTimeout(function(){ inicio.style.display = 'none'; }, 700);
+  }, seg * 1000);
+})();
+</script>
 
 <div id="install-gate">
   <div class="gate-icon">📲</div>
@@ -405,7 +479,11 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
     <div class="form-group">
       <label>Lugar exacto del hecho</label>
       <textarea id="lugar" placeholder="Ej: asentamiento humano las guacamayas casa 39 del Barrio Bucaramanga"></textarea>
-      <div class="hint">Dirección completa tal como debe quedar en el PIN.</div>
+      <div class="gps-row">
+        <button class="btn btn-gps" type="button" id="btnGps" onclick="usarUbicacion()">📍 Usar mi ubicación</button>
+        <span class="gps-estado" id="gpsEstado"></span>
+      </div>
+      <div class="hint">Dirección completa tal como debe quedar en el PIN. Puedes corregirla a mano.</div>
     </div>
   </div>
 
@@ -440,6 +518,7 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
       <div class="aspecto-actions">
         <button class="btn btn-add" onclick="guardarAspecto()">💾 Guardar</button>
         <button class="btn btn-copy-md" onclick="copiarAspectoEditor()">📋 Copiar lo escrito</button>
+        <button class="btn btn-ghost" onclick="borrarAspectoEditor()">🗑️ Borrar todo</button>
         <button class="btn btn-danger" style="padding:9px 16px;font-size:.85em;" onclick="cancelarAspecto()">Cancelar</button>
       </div>
     </div>
@@ -483,6 +562,7 @@ header.app-header::after{content:'';position:absolute;inset:0;background:radial-
           <button class="btn btn-ghost" type="button" onclick="mostrarVista('buscador')" title="Buscar en el Buscador MEBUC">🔍</button>
         </div>
         <div class="hint">Toca 🔍 para buscar el cuadrante por barrio y cargarlo con 📝.</div>
+        <div class="zap-sugerida" id="zapSugerida"></div>
       </div>
       <div class="form-group">
         <label>Modalidad</label>
@@ -841,6 +921,77 @@ function copiarAspecto(i){
   copiarTexto(aspectosData[i],'✅ Aspecto '+(i+1)+' copiado');
 }
 // Copiar lo que está escrito en el editor (aunque no se haya guardado)
+// Borra todo lo escrito en el cuadro (sin confirmación)
+function borrarAspectoEditor(){
+  const t=document.getElementById('aspectoInputText');
+  t.value='';t.focus();
+}
+
+/* ---------- Ubicación GPS + OpenStreetMap (gratis, sin clave) ---------- */
+function gpsEstado(t,err){const e=document.getElementById('gpsEstado');e.textContent=t||'';e.classList.toggle('err',!!err);}
+function normalizarTxt(x){return (x||'').toString().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+
+async function direccionOSM(lat,lng){
+  const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=es&lat='+lat+'&lon='+lng;
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),15000);
+  try{
+    const r=await fetch(url,{signal:ctl.signal,headers:{'Accept':'application/json'}});
+    if(!r.ok)throw new Error('http');
+    return await r.json();
+  }finally{clearTimeout(t);}
+}
+
+async function usarUbicacion(){
+  const btn=document.getElementById('btnGps');
+  if(!navigator.geolocation){gpsEstado('Este celular no permite obtener la ubicación.',true);return;}
+  btn.disabled=true;gpsEstado('Obteniendo ubicación GPS…');
+  try{
+    const pos=await new Promise((ok,falla)=>navigator.geolocation.getCurrentPosition(ok,falla,{enableHighAccuracy:true,timeout:20000,maximumAge:0}));
+    const lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6),precision=Math.round(pos.coords.accuracy||0);
+    gpsEstado('Buscando la dirección…');
+    const d=await direccionOSM(lat,lng);
+    const a=(d&&d.address)||{};
+    if(!d||d.error){gpsEstado('No se encontró una dirección para este punto. Escríbela a mano.',true);return;}
+    const via=a.road||a.pedestrian||a.footway||a.path||'';
+    const numero=a.house_number||'';
+    const barrio=a.neighbourhood||a.suburb||a.quarter||a.residential||a.hamlet||'';
+    const municipio=a.city||a.town||a.village||a.municipality||a.county||'';
+    let direccion=via?(via+(numero?' # '+numero:'')):String(d.display_name||'').split(',').slice(0,2).join(',');
+    const texto=(direccion+(barrio?' del barrio '+barrio:'')).trim();
+    document.getElementById('lugar').value=texto;
+    // Municipio sugerido
+    const sel=document.getElementById('municipio');
+    const opt=[...sel.options].find(o=>normalizarTxt(o.value)===normalizarTxt(municipio));
+    if(opt)sel.value=opt.value;
+    // ZAP sugerida (editable)
+    sugerirZap(barrio,opt?opt.value:'');
+    gpsEstado('✅ Ubicación aplicada'+(precision?' (precisión ±'+precision+' m)':'')+'. Verifica y corrige si es necesario.');
+  }catch(e){
+    if(e&&e.code===1)gpsEstado('Permiso de ubicación denegado. Actívalo en los ajustes del celular para MEBUC.',true);
+    else if(e&&(e.code===2||e.code===3))gpsEstado('No se pudo obtener el GPS. Activa la ubicación o sal a cielo abierto.',true);
+    else gpsEstado('No se pudo obtener la dirección. Revisa tu internet e inténtalo de nuevo.',true);
+  }finally{btn.disabled=false;}
+}
+
+function sugerirZap(barrio,municipio){
+  const aviso=document.getElementById('zapSugerida');
+  aviso.textContent='';
+  if(!barrio||typeof window.mebucBuscarBarrio!=='function')return;
+  const encontrados=window.mebucBuscarBarrio(barrio,municipio);
+  if(!encontrados.length){
+    aviso.textContent='📍 No encontré el barrio "'+barrio+'" en el Buscador. Escribe la ZAP o búscala con 🔍.';
+    return;
+  }
+  const g=encontrados[0];
+  document.getElementById('zapNumero').value=g.codigo;
+  const otros=[...new Set(encontrados.slice(1).map(x=>x.codigo))].filter(c=>c!==g.codigo);
+  aviso.textContent='📍 ZAP '+g.codigo+' sugerida por ubicación (barrio '+g.barrio+', '+(g.cai===g.estacion?g.estacion:'CAI '+g.cai)+'). Verifica; puedes cambiarla.'+(otros.length?' Otras posibles: '+otros.join(', ')+'.':'');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const z=document.getElementById('zapNumero');
+  if(z)z.addEventListener('input',()=>{document.getElementById('zapSugerida').textContent='';});
+});
+
 function copiarAspectoEditor(){
   copiarTexto(document.getElementById('aspectoInputText').value.trim(),'✅ Texto del aspecto copiado');
 }
@@ -1280,6 +1431,25 @@ function liveGroups() {
   });
 }
 
+/* ---------------- Búsqueda de barrio para sugerir ZAP desde el GPS ---------------- */
+window.mebucBuscarBarrio = function(barrio, municipio) {
+  const nb = normalize(barrio).replace(/^barrio\s+/, '').trim();
+  if (nb.length < 3) return [];
+  const exactos = [], parciales = [];
+  liveGroups().forEach(g => {
+    if (g.codigo === 'N/A') return;
+    const munG = (typeof MUNICIPIO_POR_ESTACION !== 'undefined') ? MUNICIPIO_POR_ESTACION[g.estacion] : '';
+    g.barrios.forEach(b => {
+      const nbb = normalize(b);
+      const item = { codigo: g.codigo, cai: g.cai, estacion: g.estacion, barrio: b, mismoMun: !municipio || munG === municipio };
+      if (nbb === nb) exactos.push(item);
+      else if (nb.length >= 4 && ((' ' + nbb + ' ').includes(' ' + nb + ' ') || (' ' + nb + ' ').includes(' ' + nbb + ' '))) parciales.push(item);
+    });
+  });
+  const orden = (a, b) => (b.mismoMun - a.mismoMun);
+  return exactos.sort(orden).concat(parciales.sort(orden));
+};
+
 /* ---------------- Estado de navegación (Explorador) ---------------- */
 let selDistrito = null, selEstacion = null, selCai = null;
 
@@ -1649,7 +1819,6 @@ render();
 })();
 </script>
 
-<script src="config-actualizacion.js"></script>
 <script>
 /* ======================= CÓDIGO DE ACCESO =======================
    - El código NO está escrito en la app: solo su huella (PBKDF2-SHA256) en "acceso.json" del repositorio.
@@ -1753,7 +1922,7 @@ render();
   var urlApk = null, mostrando = false, ultimaRevision = 0, esperaPermiso = null, versionActual = 0;
 
   // Datos que se conservan entre versiones (cuadrantes editados en el Buscador)
-  var CONSERVAR = ['mebuc_edits_v1', 'mebuc_acceso'];
+  var CONSERVAR = ['mebuc_edits_v1', 'mebuc_acceso', 'mebuc_config'];
 
   function estado(txt, error){ var e=$('updEstado'); e.textContent = txt || ''; e.classList.toggle('err', !!error); }
   function barra(pct){ $('updBar').style.display = 'block'; $('updBar').firstElementChild.style.width = pct + '%'; }
@@ -1767,16 +1936,19 @@ render();
       localStorage.clear(); sessionStorage.clear();
       Object.keys(guardar).forEach(function(k){ localStorage.setItem(k, guardar[k]); });
     } catch(e){}
-    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } } catch(e){}
+    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.filter(function(k){ return k !== 'mebuc-fondo'; }).map(function(k){ return caches.delete(k); })); } } catch(e){}
   }
 
   async function revisar(){
     if (mostrando || !window.MEBUC_REPO) return;
     ultimaRevision = Date.now();
     try {
-      var r = await fetch('https://api.github.com/repos/' + window.MEBUC_REPO + '/releases/latest', { cache: 'no-store' });
+      var canalPruebas = (window.MEBUC_CANAL === 'pruebas');
+      var r = await fetch('https://api.github.com/repos/' + window.MEBUC_REPO + (canalPruebas ? '/releases?per_page=30' : '/releases/latest'), { cache: 'no-store' });
       if (!r.ok) return;
       var rel = await r.json();
+      if (canalPruebas) rel = (rel || []).find(function(x){ return /^pruebas-/.test(x.tag_name || ''); });
+      if (!rel) return;
       var nueva = parseInt(String(rel.tag_name || '').replace(/\D/g, ''), 10);
       var apk = (rel.assets || []).find(function(a){ return /\.apk$/i.test(a.name); });
       if (!nueva || !apk || nueva <= versionActual) return;
