@@ -1737,6 +1737,7 @@ function registrarLectura(p){
   const f={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy||999,t:Date.now()};
   if(!UBI.mejor||Date.now()-UBI.mejor.t>45000||f.acc<=UBI.mejor.acc+3)UBI.mejor=f;
   try{localStorage.setItem('mebuc_gps_ok','1');}catch(e){}
+  precargarZona(UBI.mejor);
   UBI.oyentes.forEach(fn=>fn(UBI.mejor));
 }
 function iniciarGps(segundos){
@@ -1761,15 +1762,15 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 /* ===== B. Consultas rápidas: en paralelo, con tiempo límite y servidor alterno; calles guardadas por zona ===== */
 const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
-async function consultaOverpass(q,ms){
-  for(const srv of OVERPASS){
-    const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),ms);
-    try{
-      const r=await fetch(srv,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
-      if(r.ok)return await r.json();
-    }catch(e){}finally{clearTimeout(t);}
-  }
-  throw new Error('overpass');
+function consultaOverpass(q,ms){
+  const ctls=OVERPASS.map(()=>new AbortController());
+  const t=setTimeout(()=>ctls.forEach(c=>c.abort()),ms);
+  return Promise.any(OVERPASS.map((srv,i)=>fetch(srv,{method:'POST',body:'data='+encodeURIComponent(q),
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctls[i].signal})
+    .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.json();})
+    .then(d=>{ctls.forEach((c,j)=>{if(j!==i)c.abort();});return d;})))
+    .catch(()=>{throw new Error('overpass');})
+    .finally(()=>clearTimeout(t));
 }
 const ZONA=0.004; // ~440 m
 function claveZona(lat,lng){return Math.round(lat/ZONA)+'_'+Math.round(lng/ZONA);}
@@ -1778,9 +1779,18 @@ async function viasZona(lat,lng){
   if(UBI.cacheVias[k])return UBI.cacheVias[k];
   try{const c=JSON.parse(localStorage.getItem('mebuc_vias_'+k)||'null');if(c&&Date.now()-c.t<30*86400000){UBI.cacheVias[k]=c.v;return c.v;}}catch(e){}
   const cLat=(Math.round(lat/ZONA)*ZONA).toFixed(5),cLng=(Math.round(lng/ZONA)*ZONA).toFixed(5);
-  const d=await consultaOverpass('[out:json][timeout:15];way(around:450,'+cLat+','+cLng+')[highway][name];out tags geom;',9000);
-  const v=(d.elements||[]).filter(w=>w.tags&&w.tags.name&&w.geometry&&w.geometry.length>1)
+  UBI.zonaEnCurso=UBI.zonaEnCurso||{};
+  if(UBI.zonaEnCurso[k])return UBI.zonaEnCurso[k];
+  const pz=consultaOverpass('[out:json][timeout:20];way(around:450,'+cLat+','+cLng+')[highway][name];out tags geom;',20000);
+  UBI.zonaEnCurso[k]=pz.then(d=>guardarZona(k,d)).finally(()=>{delete UBI.zonaEnCurso[k];});
+  return UBI.zonaEnCurso[k];
+}
+function aVias(d){
+  return (d.elements||[]).filter(w=>w.tags&&w.tags.name&&w.geometry&&w.geometry.length>1)
     .map(w=>({n:w.tags.name,g:w.geometry.map(p=>[+p.lat.toFixed(6),+p.lon.toFixed(6)])}));
+}
+function guardarZona(k,d){
+  const v=aVias(d);
   UBI.cacheVias[k]=v;
   try{
     const idx=JSON.parse(localStorage.getItem('mebuc_vias_idx')||'[]').filter(x=>x!==k);idx.push(k);
@@ -1788,6 +1798,26 @@ async function viasZona(lat,lng){
     localStorage.setItem('mebuc_vias_'+k,JSON.stringify({t:Date.now(),v}));localStorage.setItem('mebuc_vias_idx',JSON.stringify(idx));
   }catch(e){}
   return v;
+}
+// Calles cerca del punto: si la zona ya está guardada es instantáneo; si no, consulta liviana (150 m)
+// y la zona completa se descarga por detrás para la próxima vez.
+function zonaGuardada(lat,lng){
+  const k=claveZona(lat,lng);
+  if(UBI.cacheVias[k])return UBI.cacheVias[k];
+  try{const c=JSON.parse(localStorage.getItem('mebuc_vias_'+k)||'null');if(c&&Date.now()-c.t<30*86400000){UBI.cacheVias[k]=c.v;return c.v;}}catch(e){}
+  return null;
+}
+function viasCerca(lat,lng){
+  const g=zonaGuardada(lat,lng);if(g)return Promise.resolve(g);
+  viasZona(lat,lng).catch(()=>{});
+  return consultaOverpass('[out:json][timeout:8];way(around:150,'+lat+','+lng+')[highway][name];out tags geom;',8000).then(aVias);
+}
+// Precarga: con la primera lectura del GPS se descargan las calles de la zona antes de abrir el mapa
+function precargarZona(f){
+  if(!f||f.acc>150)return;
+  const k=claveZona(f.lat,f.lng);
+  if(UBI.zonaPedida===k)return;UBI.zonaPedida=k;
+  if(!zonaGuardada(f.lat,f.lng))viasZona(f.lat,f.lng).catch(()=>{UBI.zonaPedida=null;});
 }
 async function nominatim(lat,lng,ms){
   const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),ms);
@@ -1960,23 +1990,42 @@ function programarCalculo(){
   UBI.tCalc=setTimeout(calcularEnCentro,350);
 }
 // Barrio y municipio (se reutiliza si el pin se movió menos de 15 m)
-function obtenerBarrio(lat,lng){
-  if(UBI.ultBM&&UBI.mapa.distance([UBI.ultBM.lat,UBI.ultBM.lng],[lat,lng])<15)return Promise.resolve(UBI.ultBM.r);
-  if(UBI.bmEnCurso&&UBI.mapa.distance([UBI.bmEnCurso.lat,UBI.bmEnCurso.lng],[lat,lng])<15)return UBI.bmEnCurso.p;
-  const p=barrioYMunicipio(lat,lng).then(r=>{UBI.ultBM={lat,lng,r};return r;})
-    .catch(()=>({barrio:'',municipio:'',via:'',numero:''})).finally(()=>{if(UBI.bmEnCurso&&UBI.bmEnCurso.p===p)UBI.bmEnCurso=null;});
-  UBI.bmEnCurso={lat,lng,p};
+// Consultas con memoria: si el pin se movió menos de 15 m se reutiliza la respuesta
+function consultaCercana(nombre,lat,lng,fn){
+  UBI.mem=UBI.mem||{};const m=UBI.mem[nombre];
+  if(m&&UBI.mapa.distance([m.lat,m.lng],[lat,lng])<15)return m.p;
+  const p=fn().catch(()=>null);
+  UBI.mem[nombre]={lat,lng,p};
+  p.then(r=>{if(r===null&&UBI.mem[nombre]&&UBI.mem[nombre].p===p)delete UBI.mem[nombre];});
   return p;
+}
+function barrioDeLimites(lat,lng){
+  return consultaCercana('isin',lat,lng,()=>consultaOverpass('[out:json][timeout:6];is_in('+lat+','+lng+')->.a;area.a[name];out tags;',6000).then(isin=>{
+    const areas=(isin.elements||[]).map(e=>e.tags||{});const nivel=t=>t.admin_level?+t.admin_level:11;
+    const barrios=areas.filter(t=>(['neighbourhood','quarter','suburb'].includes(t.place)||(t.boundary==='administrative'&&+t.admin_level>=9))&&!/^comuna\b/i.test(t.name)).sort((a,b)=>nivel(b)-nivel(a));
+    const mun=areas.find(t=>t.boundary==='administrative'&&t.admin_level==='6')||areas.find(t=>['city','town','village','municipality'].includes(t.place));
+    return {barrio:barrios[0]?barrios[0].name.replace(/^barrio\s+/i,'').trim():'',municipio:mun?mun.name:''};
+  }));
+}
+function datosNominatim(lat,lng){
+  return consultaCercana('nom',lat,lng,()=>nominatim(lat,lng,6000).then(nom=>{
+    if(!nom)throw new Error('nom');const a=nom.address||{};
+    return {via:a.road||a.pedestrian||'',numero:a.house_number||'',
+      barrio:(a.neighbourhood||a.suburb||a.quarter||a.residential||a.hamlet||'').replace(/^barrio\s+/i,'').trim(),
+      municipio:a.city||a.town||a.village||a.municipality||a.county||''};
+  }));
 }
 function pintarDireccion(){
   const c=UBI.calc,dirEl=document.getElementById('mapaDir'),btn=document.getElementById('mapaUsar');
   if(!c)return;
+  const barrio=c.barrioLim||c.barrioNom,municipio=c.munLim||c.munNom;
   if(!c.texto){
-    dirEl.textContent=c.barrioListo?'No encontré calles en este punto. Mueve el pin o escribe la dirección a mano.':'Buscando la dirección…';
+    dirEl.textContent=c.terminado?'No encontré calles en este punto. Mueve el pin o escribe la dirección a mano.':'Buscando la dirección…';
     btn.disabled=true;return;
   }
-  UBI.resultado={texto:c.texto,barrio:c.barrio,municipio:c.municipio};
-  dirEl.textContent=c.texto+(c.barrio?' del barrio '+c.barrio:'')+(c.municipio?' · '+c.municipio:'')+(c.barrioListo?'':'  (buscando barrio…)');
+  UBI.resultado={texto:c.texto,barrio,municipio};
+  const pendiente=!c.terminado?'  (completando…)':'';
+  dirEl.textContent=c.texto+(barrio?' del barrio '+barrio:'')+(municipio?' · '+municipio:'')+pendiente;
   btn.disabled=false;
 }
 async function calcularEnCentro(){
@@ -1985,23 +2034,22 @@ async function calcularEnCentro(){
   if(UBI.mapa.getZoom()<16){document.getElementById('mapaDir').textContent='Acerca el mapa para ubicar el punto exacto.';document.getElementById('mapaUsar').disabled=true;return;}
   UBI.ultimoCentro=[lat,lng];
   const id=++UBI.consulta;
-  // Si el pin sigue cerca del cálculo anterior, se conserva el barrio ya encontrado
   const prev=UBI.calc&&UBI.mapa.distance([UBI.calc.lat,UBI.calc.lng],[lat,lng])<25?UBI.calc:null;
-  UBI.calc={id,lat,lng,lista:[],texto:'',barrio:prev?prev.barrio:'',municipio:prev?prev.municipio:'',barrioListo:!!(prev&&prev.barrioListo)};
-  if(!prev){document.getElementById('mapaDir').textContent='Calculando la dirección…';document.getElementById('mapaUsar').disabled=true;}
-  const pBarrio=obtenerBarrio(lat,lng);
-  // 1) Calles (rápido; guardadas por zona)
-  const vias=await viasZona(lat,lng).catch(()=>[]);
-  if(id!==UBI.consulta)return;
-  UBI.calc.lista=analizarVias(vias,lat,lng);
-  UBI.calc.texto=armarDireccion(UBI.calc.lista,'','');
-  pintarDireccion();
-  // 2) Barrio y municipio (llegan después, sin bloquear el botón)
-  const bm=await pBarrio;
-  if(id!==UBI.consulta)return;
-  UBI.calc.barrio=bm.barrio;UBI.calc.municipio=bm.municipio;UBI.calc.barrioListo=true;
-  UBI.calc.texto=armarDireccion(UBI.calc.lista,bm.via,bm.numero)||UBI.calc.texto;
-  pintarDireccion();
+  const c=UBI.calc={id,lat,lng,lista:null,texto:prev?prev.texto:'',via:'',numero:'',
+    barrioNom:prev?prev.barrioNom:'',munNom:prev?prev.munNom:'',barrioLim:prev?prev.barrioLim:'',munLim:prev?prev.munLim:'',terminado:false};
+  if(!prev){document.getElementById('mapaDir').textContent='Buscando la dirección…';document.getElementById('mapaUsar').disabled=true;}
+  const vigente=()=>id===UBI.consulta;
+  const recalcular=()=>{
+    if(c.lista&&c.lista.length)c.texto=armarDireccion(c.lista,c.via,c.numero)||c.texto;
+    else if(c.via)c.texto=c.via+(c.numero&&/^\d+\s*[A-Z]?\s*-\s*\d+/i.test(c.numero)?' # '+c.numero.replace(/\s+/g,''):'');
+  };
+  // Las tres consultas salen a la vez; cada una mejora la dirección apenas llega
+  const pNom=datosNominatim(lat,lng).then(r=>{if(!vigente()||!r)return;c.via=r.via;c.numero=r.numero;c.barrioNom=r.barrio;c.munNom=r.municipio;recalcular();pintarDireccion();});
+  const pVias=viasCerca(lat,lng).catch(()=>[]).then(v=>{if(!vigente())return;c.lista=analizarVias(v,lat,lng);recalcular();pintarDireccion();});
+  const pLim=barrioDeLimites(lat,lng).then(r=>{if(!vigente()||!r)return;c.barrioLim=r.barrio;c.munLim=r.municipio;pintarDireccion();});
+  await Promise.allSettled([pNom,pVias,pLim]);
+  if(!vigente())return;
+  c.terminado=true;pintarDireccion();
 }
 function usarDireccionMapa(){
   const r=UBI.resultado;if(!r)return;
