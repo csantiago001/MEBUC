@@ -309,7 +309,27 @@ html.letra-2 .tab{font-size:1.08em;}
 #mapaMiGps{background:#e8f0fe;color:#0d47a1;}
 #mapaUsar{background:linear-gradient(135deg,#1b6e3e,#22863a);color:#fff;}
 #mapaUsar:disabled{opacity:.5;}
+.leaflet-control-layers{font-size:13px;border-radius:10px!important;}
+.leaflet-control-layers-base label{padding:3px 2px;}
 .mapa-ayuda{font-size:.75em;color:#7a8499;margin-top:8px;text-align:center;}
+
+/* ===== Contrainteligencia y SPOA por persona ===== */
+.ci-titulo{font-weight:800;color:var(--azul);font-size:.88em;margin:16px 0 8px;padding-top:10px;border-top:1px dashed var(--gris2);}
+#ciCampos>.ci-titulo:first-child{border-top:none;padding-top:0;margin-top:4px;}
+.ci-lista{margin-bottom:12px;}
+#ciCampos ::placeholder{color:#a3acbb;font-style:italic;opacity:1;}
+html.oscuro #ciCampos ::placeholder{color:#62708a;}
+.ci-chk{display:flex;align-items:center;gap:8px;font-size:.9em;margin:-4px 0 12px;color:var(--texto2);}
+.ci-chk input{width:18px;height:18px;}
+.spoa-elegir{display:flex;gap:8px;margin-bottom:12px;}
+.spoa-elegir select{flex:1;min-width:0;padding:10px;border:1.5px solid var(--gris2);border-radius:var(--radio);font-size:.9em;background:var(--blanco);color:var(--texto);}
+.spoa-bloque{margin-bottom:14px;}
+.spoa-bloque .spoa-block-header{justify-content:space-between;}
+html.oscuro .ci-titulo{color:#9ec2ff;}
+/* ===== Buscador: botón Atrás ===== */
+.vb .back-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;margin:0 0 10px;border-radius:10px;border:1.5px solid var(--accent);
+  background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;}
+.vb .back-btn:active{transform:scale(.97);}
 
 /* ===== Imagen de inicio ===== */
 #inicio{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;
@@ -1176,7 +1196,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="event-card-label">🕵️ Contrainteligencia</div>
         <select id="selectContra">
           <option value="">— Seleccionar evento —</option>
-          <option value="contra_verificacion_x">VERIFICACIÓN PUBLICACIÓN RED SOCIAL X</option>
+          <option value="contra_verificacion_x">VERIFICACIÓN PUBLICACIÓN EN REDES SOCIALES</option>
+          <option value="contra_lesionado_proc">LESIONADO POR ARMA DE FUEGO EN PROCEDIMIENTO POLICIAL</option>
+          <option value="contra_accidente">UNIFORMADOS LESIONADOS EN ACCIDENTE DE TRÁNSITO</option>
+          <option value="contra_verif_servicio">VERIFICACIÓN AL SERVICIO DE POLICÍA</option>
+          <option value="contra_proc_irregular">VERIFICACIÓN PRESUNTO PROCEDIMIENTO IRREGULAR</option>
           <option value="contra_policial_lesionado">POLICIAL LESIONADO EN PROCESAMIENTO</option>
           <option value="contra_servicio_policia">SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA</option>
         </select>
@@ -1220,6 +1244,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
       </div>
       <div class="hint">Dirección completa tal como debe quedar en el PIN. Puedes corregirla a mano.</div>
     </div>
+  </div>
+
+  <!-- CONTRAINTELIGENCIA: datos propios del tipo de PIN -->
+  <div class="section hidden" id="sectionCI">
+    <div class="section-title"><div class="icon">🕵️</div>Datos de la verificación</div>
+    <div class="form-group">
+      <label>Dirigido a</label>
+      <select id="ciDestinatario"><option>mi General</option><option>mi Coronel</option><option>mi Teniente Coronel</option><option>mi Mayor</option><option>mi Capitán</option><option>mi Teniente</option></select>
+    </div>
+    <div id="ciCampos"></div>
   </div>
 
   <!-- VÍCTIMAS -->
@@ -1274,16 +1308,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <!-- SPOA -->
   <div class="section hidden" id="sectionSPOA">
     <div class="section-title"><div class="icon">📋</div>Antecedentes SPOA</div>
-    <div class="spoa-block" id="spoaBlockVictima">
-      <div class="spoa-block-header">👤 Antecedentes SPOA — <strong style="margin-left:4px;">Víctima</strong></div>
-      <div id="spoContainerVictima"></div>
-      <div class="spoa-add-row"><button class="spoa-add-btn" onclick="agregarSPO('victima')">＋ Agregar anotación a la Víctima</button></div>
+    <div class="hint" style="margin-bottom:10px;">Elige la persona (víctima, victimario o capturado) y agrega sus anotaciones.</div>
+    <div class="spoa-elegir">
+      <select id="spoaPersona" onfocus="refrescarSpoaPersonas()" onmousedown="refrescarSpoaPersonas()" ontouchstart="refrescarSpoaPersonas()"></select>
+      <button class="btn btn-add" type="button" onclick="agregarBloqueSpoa()">＋ Agregar</button>
     </div>
-    <div class="spoa-block hidden" id="spoaBlockVictimario">
-      <div class="spoa-block-header victimario-header">🦹 Antecedentes SPOA — <strong style="margin-left:4px;">Victimario</strong></div>
-      <div id="spoContainerVictimario"></div>
-      <div class="spoa-add-row"><button class="spoa-add-btn victimario-add" onclick="agregarSPO('victimario')">＋ Agregar anotación al Victimario</button></div>
-    </div>
+    <div id="spoaBloques"></div>
   </div>
 
   <!-- ZAP Y MODALIDAD -->
@@ -1577,7 +1607,11 @@ const EVENTOS={
   oro_deceso:{categoria:'ORO 20',nombre:'DECESO HOSPITALARIO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue atacada y posteriormente...'},{titulo:'Traslado y deceso',placeholder:'Ej: La víctima fue trasladada a la clínica donde falleció...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
   oro_homicidio_af:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios llegaron al lugar y dispararon...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperaron vainillas de arma de fuego...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
   oro_homicidio_cp:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios atacaron al occiso con un arma cortopunzante...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
-  contra_verificacion_x:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PUBLICACIÓN RED SOCIAL X',municipioLibre:false,saludo:{destinatario:'mi capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  contra_verificacion_x:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PUBLICACIÓN EN REDES SOCIALES',municipioLibre:false,formCI:true,saludo:{destinatario:'mi Capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  contra_lesionado_proc:{categoria:'CONTRAINTELIGENCIA',nombre:'LESIONADO POR ARMA DE FUEGO EN PROCEDIMIENTO POLICIAL',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  contra_accidente:{categoria:'CONTRAINTELIGENCIA',nombre:'UNIFORMADOS LESIONADOS EN ACCIDENTE DE TRÁNSITO',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  contra_verif_servicio:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN AL SERVICIO DE POLICÍA',municipioLibre:false,formCI:true,sinLugar:true,sinHora:true,etiquetaFecha:'Fecha en que se tuvo conocimiento',saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  contra_proc_irregular:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PRESUNTO PROCEDIMIENTO IRREGULAR',municipioLibre:true,formCI:true,sinLugar:true,sinHora:true,etiquetaFecha:'Fecha en que se tuvo conocimiento',saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_policial_lesionado:{categoria:'CONTRAINTELIGENCIA',nombre:'POLICIAL LESIONADO EN PROCESAMIENTO',municipioLibre:false,saludo:{destinatario:'mi General',prefijo:'respetuosamente me permito informar la siguiente novedad'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:true,muestraUnidad:true,muestraTelefono:true,muestraVictimarios:false,tipoVictima:'policial'},
   contra_servicio_policia:{categoria:'CONTRAINTELIGENCIA',nombre:'SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA',municipioLibre:true,saludo:{destinatario:'mi general'},plantillaAspectos:[{titulo:'Materialización de los hechos',placeholder:'Ej: La materialización de los hechos se presentó en jurisdicción de la ZAP...'},{titulo:'Responsables de la ZAP',placeholder:'Ej: Responsables de la ZAP. SI Fredy Rubiano Ramos CC. 91456694...'},{titulo:'Motivo de policía',placeholder:'Ej: Al momento de los hechos se encontraban atendiendo un motivo de policía...'},{titulo:'Cobertura ZAP',placeholder:'Ej: Se encontraban cubriendo la ZAP...'}],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'}
 };
@@ -1612,21 +1646,25 @@ function seleccionarEvento(id){
   }
   document.getElementById('sectionCapturados').classList.toggle('hidden',!c.muestraCapturados);
   document.getElementById('sectionSPOA').classList.toggle('hidden',!c.muestraSPOA);
-  document.getElementById('spoaBlockVictimario').classList.toggle('hidden',!(hayVictimarios&&c.muestraSPOA));
+  // Campos que no aplican a algunas verificaciones
+  document.getElementById('lugar').closest('.form-group').classList.toggle('hidden',!!c.sinLugar);
+  document.getElementById('hora').closest('.form-group').classList.toggle('hidden',!!c.sinHora);
+  document.getElementById('fecha').closest('.form-group').querySelector('label').textContent=c.etiquetaFecha||'Fecha del hecho';
+  renderFormCI(id);
   document.getElementById('sectionZap').classList.toggle('hidden',!c.muestraZap);
   aspectosData=[];aspectoEditIndex=null;
   renderAspectosList();
   document.getElementById('aspectoInputBox').classList.add('hidden');
   document.getElementById('btnAgregarAspecto').classList.remove('hidden');
   document.getElementById('aspectoInputText').value='';
-  const noAspectos=['contra_verificacion_x','contra_policial_lesionado'].includes(id);
+  const noAspectos=['contra_policial_lesionado'].includes(id);
   document.getElementById('sectionAspectos').classList.toggle('hidden',noAspectos);
   document.getElementById('victimasContainer').innerHTML='';
   document.getElementById('victimariosContainer').innerHTML='';
-  document.getElementById('spoContainerVictima').innerHTML='';
-  document.getElementById('spoContainerVictimario').innerHTML='';
+  document.getElementById('spoaBloques').innerHTML='';
   if(c.tipoVictima)agregarVictima();
   if(hayVictimarios&&c.muestraVictimarios)agregarVictimario();
+  refrescarSpoaPersonas();
 }
 
 /* ---------- Aspectos de interés ---------- */
@@ -1762,8 +1800,8 @@ async function nominatim(lat,lng,ms){
 /* ===== E. Barrio según los límites del mapa (el polígono que contiene el punto) ===== */
 async function barrioYMunicipio(lat,lng){
   const [isin,nom]=await Promise.all([
-    consultaOverpass('[out:json][timeout:8];is_in('+lat+','+lng+')->.a;area.a[name];out tags;',7000).catch(()=>null),
-    nominatim(lat,lng,7000)
+    consultaOverpass('[out:json][timeout:8];is_in('+lat+','+lng+')->.a;area.a[name];out tags;',5000).catch(()=>null),
+    nominatim(lat,lng,5000)
   ]);
   let barrio='',municipio='';
   if(isin){
@@ -1871,15 +1909,27 @@ function municipioDeLista(nombre){
 /* ===== C. Mapa para confirmar o mover el punto ===== */
 function abrirMapa(){
   const modal=document.getElementById('mapaModal');
-  modal.classList.add('open');UBI.abierto=true;UBI.usuarioMovio=false;UBI.resultado=null;
+  modal.classList.add('open');UBI.abierto=true;UBI.usuarioMovio=false;UBI.resultado=null;UBI.accCentro=null;UBI.calc=null;
   document.getElementById('mapaUsar').disabled=true;
   document.getElementById('mapaDir').textContent='Esperando la ubicación…';
   const ini=lecturaFresca(60000,5000);
   const centro=ini?[ini.lat,ini.lng]:(UBI.ultimoCentro||BUCARAMANGA);
   if(!UBI.mapa){
     UBI.mapa=L.map('mapa',{zoomControl:false,attributionControl:true}).setView(centro,ini?18:14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {subdomains:'abcd',maxZoom:20,attribution:'© OpenStreetMap © CARTO'}).addTo(UBI.mapa);
+    const esri='https://server.arcgisonline.com/ArcGIS/rest/services/';
+    const op={maxZoom:20,maxNativeZoom:19};
+    const calles=L.tileLayer(esri+'World_Street_Map/MapServer/tile/{z}/{y}/{x}',Object.assign({attribution:'Mapa © Esri · © OpenStreetMap'},op));
+    const satelite=L.layerGroup([
+      L.tileLayer(esri+'World_Imagery/MapServer/tile/{z}/{y}/{x}',Object.assign({attribution:'Imágenes © Esri'},op)),
+      L.tileLayer(esri+'Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',op),
+      L.tileLayer(esri+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',op)
+    ]);
+    calles.addTo(UBI.mapa);
+    L.control.layers({'🗺️ Calles':calles,'🛰️ Satélite':satelite},null,{position:'topleft',collapsed:false}).addTo(UBI.mapa);
+    // Respaldo: si el mapa de calles falla varias veces, usar OpenStreetMap
+    let fallos=0;
+    calles.on('tileerror',()=>{if(++fallos===6){UBI.mapa.removeLayer(calles);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,maxNativeZoom:19,attribution:'© OpenStreetMap'}).addTo(UBI.mapa);}});
     L.control.zoom({position:'topright'}).addTo(UBI.mapa);
     UBI.mapa.on('dragstart zoomstart',e=>{if(e&&e.type==='dragstart')UBI.usuarioMovio=true;});
     UBI.mapa.on('moveend',()=>programarCalculo());
@@ -1896,9 +1946,9 @@ function alMoverGps(f){
   if(!UBI.mapa)return;
   if(UBI.circulo)UBI.circulo.setLatLng([f.lat,f.lng]).setRadius(f.acc);
   else UBI.circulo=L.circle([f.lat,f.lng],{radius:f.acc,color:'#1976d2',weight:1,fillOpacity:.12}).addTo(UBI.mapa);
-  if(!UBI.usuarioMovio){
-    const c=UBI.mapa.getCenter();
-    if(UBI.mapa.getZoom()<18||UBI.mapa.distance(c,[f.lat,f.lng])>8)UBI.mapa.setView([f.lat,f.lng],Math.max(UBI.mapa.getZoom(),18),{animate:false});
+  if(!UBI.usuarioMovio&&(UBI.accCentro==null||f.acc<UBI.accCentro-3)){
+    UBI.accCentro=f.acc;
+    UBI.mapa.setView([f.lat,f.lng],Math.max(UBI.mapa.getZoom(),18),{animate:false});
   }
 }
 function alErrorGps(e){
@@ -1909,32 +1959,49 @@ function programarCalculo(){
   clearTimeout(UBI.tCalc);
   UBI.tCalc=setTimeout(calcularEnCentro,350);
 }
+// Barrio y municipio (se reutiliza si el pin se movió menos de 15 m)
+function obtenerBarrio(lat,lng){
+  if(UBI.ultBM&&UBI.mapa.distance([UBI.ultBM.lat,UBI.ultBM.lng],[lat,lng])<15)return Promise.resolve(UBI.ultBM.r);
+  if(UBI.bmEnCurso&&UBI.mapa.distance([UBI.bmEnCurso.lat,UBI.bmEnCurso.lng],[lat,lng])<15)return UBI.bmEnCurso.p;
+  const p=barrioYMunicipio(lat,lng).then(r=>{UBI.ultBM={lat,lng,r};return r;})
+    .catch(()=>({barrio:'',municipio:'',via:'',numero:''})).finally(()=>{if(UBI.bmEnCurso&&UBI.bmEnCurso.p===p)UBI.bmEnCurso=null;});
+  UBI.bmEnCurso={lat,lng,p};
+  return p;
+}
+function pintarDireccion(){
+  const c=UBI.calc,dirEl=document.getElementById('mapaDir'),btn=document.getElementById('mapaUsar');
+  if(!c)return;
+  if(!c.texto){
+    dirEl.textContent=c.barrioListo?'No encontré calles en este punto. Mueve el pin o escribe la dirección a mano.':'Buscando la dirección…';
+    btn.disabled=true;return;
+  }
+  UBI.resultado={texto:c.texto,barrio:c.barrio,municipio:c.municipio};
+  dirEl.textContent=c.texto+(c.barrio?' del barrio '+c.barrio:'')+(c.municipio?' · '+c.municipio:'')+(c.barrioListo?'':'  (buscando barrio…)');
+  btn.disabled=false;
+}
 async function calcularEnCentro(){
   if(!UBI.abierto||!UBI.mapa)return;
-  const c=UBI.mapa.getCenter();const lat=+c.lat.toFixed(6),lng=+c.lng.toFixed(6);
-  if(UBI.mapa.getZoom()<16){document.getElementById('mapaDir').textContent='Acerca el mapa para ubicar el punto exacto.';return;}
+  const centro=UBI.mapa.getCenter();const lat=+centro.lat.toFixed(6),lng=+centro.lng.toFixed(6);
+  if(UBI.mapa.getZoom()<16){document.getElementById('mapaDir').textContent='Acerca el mapa para ubicar el punto exacto.';document.getElementById('mapaUsar').disabled=true;return;}
   UBI.ultimoCentro=[lat,lng];
   const id=++UBI.consulta;
-  const dirEl=document.getElementById('mapaDir');
-  dirEl.textContent='Calculando la dirección…';
-  document.getElementById('mapaUsar').disabled=true;
-  // Calles (rápido, guardadas por zona) y barrio (en paralelo)
-  const pVias=viasZona(lat,lng).catch(()=>[]);
-  clearTimeout(UBI.tBarrio);
-  // El barrio solo se vuelve a consultar si el pin se movió más de 15 m (evita consultas repetidas)
-  const previo=UBI.ultBM&&UBI.mapa.distance([UBI.ultBM.lat,UBI.ultBM.lng],[lat,lng])<15?UBI.ultBM.r:null;
-  const pBarrio=previo?Promise.resolve(previo):new Promise(ok=>{UBI.tBarrio=setTimeout(()=>barrioYMunicipio(lat,lng)
-    .then(r=>{UBI.ultBM={lat,lng,r};ok(r);}).catch(()=>ok({barrio:'',municipio:'',via:'',numero:''})),500);});
-  const vias=await pVias;if(id!==UBI.consulta)return;
-  const lista=analizarVias(vias,lat,lng);
-  let texto=armarDireccion(lista,'','');
-  if(texto){dirEl.textContent=texto+' …';}
-  const bm=await pBarrio;if(id!==UBI.consulta)return;
-  texto=armarDireccion(lista,bm.via,bm.numero)||texto;
-  if(!texto){dirEl.textContent='No encontré calles en este punto. Mueve el pin o escribe la dirección a mano.';return;}
-  UBI.resultado={texto,barrio:bm.barrio,municipio:bm.municipio};
-  dirEl.textContent=texto+(bm.barrio?' del barrio '+bm.barrio:'')+(bm.municipio?' · '+bm.municipio:'');
-  document.getElementById('mapaUsar').disabled=false;
+  // Si el pin sigue cerca del cálculo anterior, se conserva el barrio ya encontrado
+  const prev=UBI.calc&&UBI.mapa.distance([UBI.calc.lat,UBI.calc.lng],[lat,lng])<25?UBI.calc:null;
+  UBI.calc={id,lat,lng,lista:[],texto:'',barrio:prev?prev.barrio:'',municipio:prev?prev.municipio:'',barrioListo:!!(prev&&prev.barrioListo)};
+  if(!prev){document.getElementById('mapaDir').textContent='Calculando la dirección…';document.getElementById('mapaUsar').disabled=true;}
+  const pBarrio=obtenerBarrio(lat,lng);
+  // 1) Calles (rápido; guardadas por zona)
+  const vias=await viasZona(lat,lng).catch(()=>[]);
+  if(id!==UBI.consulta)return;
+  UBI.calc.lista=analizarVias(vias,lat,lng);
+  UBI.calc.texto=armarDireccion(UBI.calc.lista,'','');
+  pintarDireccion();
+  // 2) Barrio y municipio (llegan después, sin bloquear el botón)
+  const bm=await pBarrio;
+  if(id!==UBI.consulta)return;
+  UBI.calc.barrio=bm.barrio;UBI.calc.municipio=bm.municipio;UBI.calc.barrioListo=true;
+  UBI.calc.texto=armarDireccion(UBI.calc.lista,bm.via,bm.numero)||UBI.calc.texto;
+  pintarDireccion();
 }
 function usarDireccionMapa(){
   const r=UBI.resultado;if(!r)return;
@@ -1957,7 +2024,7 @@ function usarUbicacion(){
   iniciarGps(150);
 }
 function volverAMiGps(){
-  UBI.usuarioMovio=false;
+  UBI.usuarioMovio=false;UBI.accCentro=null;
   const f=lecturaFresca(120000,5000);
   if(f)UBI.mapa.setView([f.lat,f.lng],18);
   iniciarGps(150);
@@ -2013,7 +2080,7 @@ function agregarVictima(){
   const c=eventoSeleccionado;
   const n=document.querySelectorAll('#victimasContainer .item-card').length;
   const esPrincipal=n===0;
-  const div=document.createElement('div');div.className='item-card';
+  const div=document.createElement('div');div.className='item-card';nuevoPid(div,'v');
   div.innerHTML=`<div class="item-card-header"><span>${esPrincipal?'👤 Víctima principal':'👥 Víctima adicional #'+(n+1)}</span><button class="btn btn-danger" onclick="this.closest('.item-card').remove();renumerarVictimas();">✕</button></div>
   <div class="form-group"><label>Nombre completo</label><input type="text" class="v-nombre" placeholder="Ej: Leonis Silva"></div>
   <div class="row3">
@@ -2028,6 +2095,7 @@ function agregarVictima(){
 }
 
 function renumerarVictimas(){
+  setTimeout(actualizarCabecerasSpoa,0);
   document.querySelectorAll('#victimasContainer .item-card').forEach((c,i)=>{
     c.querySelector('.item-card-header span').innerHTML=i===0?'👤 Víctima principal':'👥 Víctima adicional #'+(i+1);
   });
@@ -2038,14 +2106,12 @@ function toggleVictimariosSection(){
   hayVictimarios=chk;
   document.getElementById('victimariosContainer').classList.toggle('hidden',!chk);
   document.getElementById('btnAgregarVictimario').classList.toggle('hidden',!chk);
-  if(eventoSeleccionado&&eventoSeleccionado.muestraSPOA){
-    document.getElementById('spoaBlockVictimario').classList.toggle('hidden',!chk);
-  }
+  actualizarCabecerasSpoa();
   if(chk&&document.querySelectorAll('#victimariosContainer .item-card').length===0)agregarVictimario();
 }
 
 function agregarVictimario(){
-  const div=document.createElement('div');div.className='item-card';
+  const div=document.createElement('div');div.className='item-card';nuevoPid(div,'vm');
   div.innerHTML=`<div class="item-card-header"><span>🦹 Victimario #<span class="vm-num"></span></span><button class="btn btn-danger" onclick="this.closest('.item-card').remove();renumerarVictimarios();">✕</button></div>
   <div class="form-group"><label>Nombre completo</label><input type="text" class="vm-nombre" placeholder="Carlos Julio Rosado Beltrán"></div>
   <div class="row2">
@@ -2057,11 +2123,12 @@ function agregarVictimario(){
 }
 
 function renumerarVictimarios(){
+  setTimeout(actualizarCabecerasSpoa,0);
   document.querySelectorAll('#victimariosContainer .item-card').forEach((c,i)=>{c.querySelector('.vm-num').textContent=i+1;});
 }
 
 function agregarCapturado(){
-  const div=document.createElement('div');div.className='item-card';
+  const div=document.createElement('div');div.className='item-card';nuevoPid(div,'cap');
   div.innerHTML=`<div class="item-card-header"><span>🚔 Capturado #<span class="capt-num"></span></span><button class="btn btn-danger" onclick="this.closest('.item-card').remove();actualizarNumsCapturados();">✕</button></div>
   <div class="form-group"><label>Nombre completo</label><input type="text" class="capt-nombre" placeholder="Jenny Viviana Alfonso Rivera"></div>
   <div class="row2">
@@ -2073,38 +2140,64 @@ function agregarCapturado(){
 }
 
 function actualizarNumsCapturados(){
+  setTimeout(actualizarCabecerasSpoa,0);
   const cards=document.querySelectorAll('#capturadosContainer .item-card');
   cards.forEach((c,i)=>{c.querySelector('.capt-num').textContent=i+1;});
   document.getElementById('badgeCapturados').textContent=cards.length;
 }
 
-/* ---------- SPOA ---------- */
-function agregarSPO(persona){
-  const containerId=persona==='victima'?'spoContainerVictima':'spoContainerVictimario';
-  const container=document.getElementById(containerId);
-  if(!container.querySelector('.spoa-col-headers')){
-    const hdr=document.createElement('div');
-    hdr.className='spoa-col-headers';
-    hdr.innerHTML='<span>Cant.</span><span>Delito</span><span>Año(s)</span><span></span>';
-    container.appendChild(hdr);
-  }
-  const row=document.createElement('div');
-  row.className='spoa-row';
-  row.dataset.persona=persona;
+/* ---------- SPOA: antecedentes por persona (víctimas, victimarios y capturados) ---------- */
+let pidSeq=0;
+function nuevoPid(div,rol){div.dataset.pid='p'+(++pidSeq);div.dataset.rol=rol;}
+function personasPin(){
+  const out=[],v=(c,s)=>{const e=c.querySelector(s);return e?e.value.trim():'';};
+  document.querySelectorAll('#victimasContainer .item-card').forEach((c,i)=>out.push({pid:c.dataset.pid,rol:'v',idx:i,etiqueta:i===0?'Víctima':'Víctima '+(i+1),nombre:v(c,'.v-nombre'),cc:v(c,'.v-cedula')}));
+  if(hayVictimarios)document.querySelectorAll('#victimariosContainer .item-card').forEach((c,i)=>out.push({pid:c.dataset.pid,rol:'vm',idx:i,etiqueta:'Victimario '+(i+1),nombre:v(c,'.vm-nombre'),cc:v(c,'.vm-cedula')}));
+  if(eventoSeleccionado&&eventoSeleccionado.muestraCapturados)document.querySelectorAll('#capturadosContainer .item-card').forEach((c,i)=>out.push({pid:c.dataset.pid,rol:'cap',idx:i,etiqueta:'Capturado '+(i+1),nombre:v(c,'.capt-nombre'),cc:v(c,'.capt-cedula')}));
+  return out;
+}
+function refrescarSpoaPersonas(){
+  const sel=document.getElementById('spoaPersona');const actual=sel.value;
+  const libres=personasPin().filter(p=>!document.querySelector('#spoaBloques .spoa-bloque[data-pid="'+p.pid+'"]'));
+  sel.innerHTML=libres.length?libres.map(p=>'<option value="'+p.pid+'">'+escAttr(p.etiqueta+(p.nombre?' — '+p.nombre:''))+'</option>').join(''):'<option value="">(no hay más personas: agrégalas arriba)</option>';
+  if(libres.some(p=>p.pid===actual))sel.value=actual;
+}
+function agregarBloqueSpoa(pid){
+  refrescarSpoaPersonas();
+  pid=pid||document.getElementById('spoaPersona').value;if(!pid)return null;
+  const b=document.createElement('div');b.className='spoa-bloque';b.dataset.pid=pid;
+  b.innerHTML='<div class="spoa-block-header"><span class="spoa-quien"></span><button class="btn btn-danger" type="button" style="padding:4px 10px;font-size:.75em;" onclick="this.closest(\'.spoa-bloque\').remove();refrescarSpoaPersonas();">✕</button></div>'+
+    '<div class="spoa-col-headers"><span>Cant.</span><span>Delito</span><span>Año(s)</span><span></span></div><div class="spoa-filas"></div>'+
+    '<div class="spoa-add-row"><button class="spoa-add-btn" type="button" onclick="agregarFilaSpoa(this.closest(\'.spoa-bloque\'))">＋ Agregar anotación</button></div>';
+  document.getElementById('spoaBloques').appendChild(b);
+  agregarFilaSpoa(b);actualizarCabecerasSpoa();refrescarSpoaPersonas();
+  return b;
+}
+function agregarFilaSpoa(b){
+  const row=document.createElement('div');row.className='spoa-row';
   row.innerHTML=`<input type="number" inputmode="numeric" class="spo-cantidad" placeholder="1" min="1" style="text-align:center;">
   <input type="text" class="spo-delito" placeholder="Ej: Estupefacientes">
   <input type="text" class="spo-anos" placeholder="2026, 2025">
-  <button class="btn btn-danger" style="padding:4px 8px;font-size:.72em;border-radius:6px;justify-content:center;" onclick="this.closest('.spoa-row').remove();limpiarCabeceraSpoa('${containerId}')">✕</button>`;
-  container.appendChild(row);
+  <button class="btn btn-danger" type="button" style="padding:4px 8px;font-size:.72em;border-radius:6px;justify-content:center;" onclick="this.closest('.spoa-row').remove()">✕</button>`;
+  b.querySelector('.spoa-filas').appendChild(row);
+  return row;
 }
-
-function limpiarCabeceraSpoa(containerId){
-  const container=document.getElementById(containerId);
-  if(container.querySelectorAll('.spoa-row').length===0){
-    const hdr=container.querySelector('.spoa-col-headers');
-    if(hdr)hdr.remove();
-  }
+function actualizarCabecerasSpoa(){
+  const ps=personasPin();
+  document.querySelectorAll('#spoaBloques .spoa-bloque').forEach(b=>{
+    const p=ps.find(x=>x.pid===b.dataset.pid);
+    if(!p){b.remove();return;}
+    const icono={v:'👤',vm:'🦹',cap:'🚔'}[p.rol];
+    b.querySelector('.spoa-block-header').classList.toggle('victimario-header',p.rol!=='v');
+    b.querySelector('.spoa-quien').textContent=icono+' '+p.etiqueta+(p.nombre?' — '+p.nombre:'');
+  });
+  refrescarSpoaPersonas();
 }
+function leerFilasSpoa(b){
+  return [...b.querySelectorAll('.spoa-row')].map(r=>({cantidad:r.querySelector('.spo-cantidad').value.trim(),delito:r.querySelector('.spo-delito').value.trim(),anos:r.querySelector('.spo-anos').value.trim()}))
+    .filter(x=>x.delito&&x.anos);
+}
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('.v-nombre,.vm-nombre,.capt-nombre'))actualizarCabecerasSpoa();});
 
 function obtenerSaludoActual(){
   const h=new Date().getHours();
@@ -2112,6 +2205,247 @@ function obtenerSaludoActual(){
   if(h<18)return{texto:'buenas tardes',icono:'🌤️'};
   return{texto:'buenas noches',icono:'🌙'};
 }
+
+/* ======================= CONTRAINTELIGENCIA: formularios por tipo de PIN ======================= */
+const GRADOS=['PT.','SI.','IT.','IJ.','SC.','CM.','ST.','TE.','CT.','MY.','TC.','CR.','PP.','AUX.'];
+const REDES=['X','Facebook','Instagram','TikTok','YouTube','WhatsApp','Threads','Telegram','Kwai','LinkedIn','Snapchat','Otra'];
+const DOCS=['CC.','CE.','CV.','PPT.','TI.','PEP.','Pasaporte'];
+const DESTINATARIOS=['mi General','mi Coronel','mi Teniente Coronel','mi Mayor','mi Capitán','mi Teniente'];
+const C_GRADO={k:'grado',l:'Grado',t:'sel',ops:GRADOS};
+const C_NOMBRE={k:'nombre',l:'Nombre completo',ph:'Nombres y apellidos'};
+const C_CC={k:'cc',l:'Cédula',num:true,ph:'1102817216'};
+
+const FORM_CI={
+  contra_verificacion_x:{dest:'mi Capitán',campos:[
+    {t:'sel',k:'red',l:'Red social',ops:REDES},
+    {t:'txt',k:'redOtra',l:'¿Cuál red social?',ph:'Ej: Reddit',si:['red','Otra']},
+    {t:'txt',k:'tituloTema',l:'Tema para el encabezado',ph:'ABUSO DE AUTORIDAD',def:'ABUSO DE AUTORIDAD'},
+    {t:'row2',campos:[{k:'autorDesc',l:'¿Quién publicó? (opcional)',ph:'el columnista de La Silla Vacía'},{k:'autor',l:'Nombre del perfil o autor',ph:'Julio Acelas'}]},
+    {t:'area',k:'tema',l:'¿Qué dio a conocer la publicación?',ph:'una denuncia relacionada con un procedimiento policial en el que se cuestionaría un presunto uso excesivo de la fuerza por parte de uniformados'},
+    {t:'area',k:'contexto',l:'Contexto de los hechos (opcional)',ph:'mientras funcionarios de la Secretaría del Interior y de la Policía Nacional adelantaban actividades de control y recuperación del espacio público'},
+    {t:'titulo',l:'📄 Orden de servicio (opcional)'},
+    {t:'row2',campos:[{k:'osNum',l:'Orden de servicio No.',ph:'066'},{k:'osAnexo',l:'Anexo',ph:'5'}]},
+    {t:'txt',k:'osNombre',l:'Denominada',ph:'Dispositivo de seguridad y acompañamiento operativo al espacio público'},
+    {t:'lista',k:'unis',l:'👮 Uniformados que habrían intervenido',item:'Uniformado',campos:[C_GRADO,C_NOMBRE,C_CC]},
+    {t:'titulo',l:'⚖️ Investigación disciplinaria (opcional)'},
+    {t:'txt',k:'discOficina',l:'Oficina',ph:'Oficina de Control Disciplinario Interno de Instrucción No. 19'},
+    {t:'row2',campos:[{k:'discRad',l:'Radicado',ph:'EE-DESAN-2025-77'},{k:'discDecision',l:'Decisión adoptada',ph:'el archivo'}]},
+    {t:'titulo',l:'🗂️ Cargue de la novedad (opcional)'},
+    {t:'row3',campos:[{k:'metodo',l:'Método',num:true,ph:'2025070151'},{k:'hecho',l:'Hecho',num:true,ph:'202501008210'},{k:'producto',l:'Código de producto',num:true,ph:'2025020337…'}]}
+  ]},
+  contra_lesionado_proc:{dest:'mi General',campos:[
+    {t:'lista',k:'lesionados',l:'🩸 Capturados lesionados',item:'Capturado lesionado',min:1,campos:[C_NOMBRE,{k:'doc',l:'Documento',t:'sel',ops:DOCS},{k:'num',l:'Número',num:true,ph:'26216795'},
+      {k:'lesion',l:'¿Qué presenta?',ph:'(02) impactos por arma de fuego (pierna derecha y talón derecho) sin revestir gravedad',full:true}]},
+    {t:'lista',k:'ilesos',l:'🚔 Otros capturados (ilesos)',item:'Capturado ileso',campos:[C_NOMBRE,{k:'doc',l:'Documento',t:'sel',ops:DOCS},{k:'num',l:'Número',num:true,ph:'1045725658'}]},
+    {t:'lista',k:'tiradores',l:'🔫 Uniformados que accionaron su arma',item:'Uniformado',campos:[C_GRADO,C_NOMBRE,C_CC,
+      {k:'veces',l:'N.º de disparos',num:true,ph:'4'},{k:'serie',l:'Serie del arma',ph:'SP0220352'}]},
+    {t:'txt',k:'lote',l:'Lote de la munición (opcional)',ph:'0320'}
+  ]},
+  contra_accidente:{dest:'mi General',campos:[
+    {t:'lista',k:'unis',l:'👮 Uniformados lesionados',item:'Uniformado',min:1,campos:[C_GRADO,C_NOMBRE,C_CC,
+      {k:'lesion',l:'Lesión',ph:'contusión en la rodilla y tobillo derecho',full:true}]},
+    {t:'txt',k:'unidad',l:'Adscritos a',ph:'ZAP 6-4 del CAI San Antonio del Carrizal de la Estación de Policía Girón'},
+    {t:'txt',k:'actividad',l:'¿Qué estaban haciendo?',ph:'tercer turno de vigilancia'},
+    {t:'titulo',l:'🏍️ Vehículo institucional'},
+    {t:'row3',campos:[{k:'vehTipo',l:'Tipo',ph:'motocicleta institucional',def:'motocicleta institucional'},{k:'vehSiglas',l:'Siglas',ph:'31-2140'},{k:'vehPlaca',l:'Placa',ph:'RDA10F'}]},
+    {t:'chk',k:'docVigente',l:'Documentación vigente',def:true},
+    {t:'titulo',l:'🚗 Tercero involucrado (opcional)'},
+    {t:'row2',campos:[{k:'terVeh',l:'Vehículo',ph:'Chevrolet Corsa'},{k:'terPlaca',l:'Placa',ph:'BYM537'}]},
+    {t:'row2',campos:[{k:'terNombre',l:'Nombre del conductor(a)',ph:'María Andrea Sandoval Pérez'},{k:'terCC',l:'Cédula',num:true,ph:'28294792'}]},
+    {t:'sel',k:'terGenero',l:'Quien conducía es',ops:['La conductora','El conductor']},
+    {t:'area',k:'dinamica',l:'¿Cómo ocurrió?',ph:'habría abierto la puerta de manera repentina, impactándolos y ocasionando que estos se precipitaran contra el pavimento'},
+    {t:'txt',k:'traslado',l:'Trasladados a (opcional)',ph:'la Clínica la Riviera a espera de exámenes rayos X'}
+  ]},
+  contra_verif_servicio:{dest:'mi General',campos:[
+    {t:'txt',k:'unidadTit',l:'Unidad verificada (para el encabezado)',ph:'LA ESTACIÓN AEROPUERTO'},
+    {t:'area',k:'conocimiento',l:'Se tuvo conocimiento de…',ph:'un escrito anónimo en el que se relacionarían presuntas situaciones que afectarían la imagen institucional…'}
+  ]},
+  contra_proc_irregular:{dest:'mi General',campos:[
+    {t:'area',k:'conocimiento',l:'Se tuvo conocimiento de…',ph:'un presunto procedimiento irregular, relacionado con una posible exigencia de dádivas por parte de uniformados…'}
+  ]}
+};
+
+function escAttr(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function htmlCampoCI(c){
+  const lab='<label>'+escAttr(c.l||'')+'</label>';
+  const extra=(c.num?' inputmode="numeric"':'')+(c.ph?' placeholder="Ej: '+escAttr(c.ph)+'"':'');
+  if(c.t==='sel')return '<div class="form-group"'+(c.si?' data-si="'+c.si[0]+'='+escAttr(c.si[1])+'"':'')+'>'+lab+'<select data-k="'+c.k+'">'+c.ops.map(o=>'<option>'+escAttr(o)+'</option>').join('')+'</select></div>';
+  if(c.t==='area')return '<div class="form-group">'+lab+'<textarea data-k="'+c.k+'"'+extra+'></textarea></div>';
+  if(c.t==='chk')return '<label class="ci-chk"><input type="checkbox" data-k="'+c.k+'"'+(c.def?' checked':'')+'> '+escAttr(c.l)+'</label>';
+  return '<div class="form-group"'+(c.si?' data-si="'+c.si[0]+'='+escAttr(c.si[1])+'"':'')+'>'+lab+'<input type="text" data-k="'+c.k+'"'+extra+' value="'+escAttr(c.def||'')+'"></div>';
+}
+function htmlItemCI(lista,n){
+  const filas=[];let fila=[];
+  lista.campos.forEach(c=>{
+    const campo=htmlCampoCI(Object.assign({},c,{si:null})).replace('data-k=','data-f=');
+    if(c.full){if(fila.length){filas.push(fila);fila=[];}filas.push([campo]);}
+    else{fila.push(campo);if(fila.length===3){filas.push(fila);fila=[];}}
+  });
+  if(fila.length)filas.push(fila);
+  return '<div class="item-card ci-item"><div class="item-card-header"><span>'+escAttr(lista.item)+' #<span class="ci-n">'+n+'</span></span>'+
+    '<button class="btn btn-danger" type="button" onclick="quitarItemCI(this)">✕</button></div>'+
+    filas.map(f=>f.length===1?f[0]:'<div class="'+(f.length===2?'row2':'row3')+'">'+f.join('')+'</div>').join('')+'</div>';
+}
+function renderFormCI(evId){
+  const sec=document.getElementById('sectionCI'),cont=document.getElementById('ciCampos');
+  const f=FORM_CI[evId];
+  if(!f){sec.classList.add('hidden');cont.innerHTML='';return;}
+  sec.classList.remove('hidden');
+  document.getElementById('ciDestinatario').value=f.dest;
+  cont.innerHTML=f.campos.map(c=>{
+    if(c.t==='titulo')return '<div class="ci-titulo">'+escAttr(c.l)+'</div>';
+    if(c.t==='row2'||c.t==='row3')return '<div class="'+c.t+'">'+c.campos.map(htmlCampoCI).join('')+'</div>';
+    if(c.t==='lista')return '<div class="ci-lista" data-k="'+c.k+'"><div class="ci-titulo">'+escAttr(c.l)+'</div><div class="ci-items"></div>'+
+      '<button class="btn btn-add" type="button" onclick="agregarItemCI(\''+evId+'\',\''+c.k+'\')">＋ Agregar '+escAttr(c.item.toLowerCase())+'</button></div>';
+    return htmlCampoCI(c);
+  }).join('');
+  f.campos.filter(c=>c.t==='lista'&&c.min).forEach(c=>{for(let i=0;i<c.min;i++)agregarItemCI(evId,c.k);});
+  actualizarCondicionalesCI();
+}
+function defLista(evId,k){return (FORM_CI[evId]||{campos:[]}).campos.find(c=>c.t==='lista'&&c.k===k);}
+function agregarItemCI(evId,k){
+  const def=defLista(evId,k);if(!def)return null;
+  const items=document.querySelector('.ci-lista[data-k="'+k+'"] .ci-items');
+  items.insertAdjacentHTML('beforeend',htmlItemCI(def,items.children.length+1));
+  return items.lastElementChild;
+}
+function quitarItemCI(btn){
+  const items=btn.closest('.ci-items');btn.closest('.ci-item').remove();
+  [...items.children].forEach((it,i)=>{const n=it.querySelector('.ci-n');if(n)n.textContent=i+1;});
+  if(typeof programarBorrador==='function')programarBorrador();
+}
+function actualizarCondicionalesCI(){
+  document.querySelectorAll('#ciCampos [data-si]').forEach(g=>{
+    const [k,v]=g.dataset.si.split('=');const s=document.querySelector('#ciCampos [data-k="'+k+'"]');
+    g.classList.toggle('hidden',!s||s.value!==v);
+  });
+}
+function leerCI(){
+  const o={dest:document.getElementById('ciDestinatario').value};
+  document.querySelectorAll('#ciCampos [data-k]').forEach(e=>{
+    if(e.classList.contains('ci-lista'))return;
+    o[e.dataset.k]=e.type==='checkbox'?e.checked:e.value.trim();
+  });
+  document.querySelectorAll('#ciCampos .ci-lista').forEach(l=>{
+    o[l.dataset.k]=[...l.querySelectorAll('.ci-item')].map(it=>{const r={};it.querySelectorAll('[data-f]').forEach(e=>{r[e.dataset.f]=e.value.trim();});return r;});
+  });
+  return o;
+}
+function ponerCI(evId,o){
+  if(!o||!FORM_CI[evId])return;
+  if(o.dest)document.getElementById('ciDestinatario').value=o.dest;
+  document.querySelectorAll('#ciCampos [data-k]').forEach(e=>{
+    if(e.classList.contains('ci-lista')||!(e.dataset.k in o))return;
+    if(e.type==='checkbox')e.checked=!!o[e.dataset.k];else e.value=o[e.dataset.k];
+  });
+  document.querySelectorAll('#ciCampos .ci-lista').forEach(l=>{
+    const datos=o[l.dataset.k];if(!Array.isArray(datos))return;
+    const items=l.querySelector('.ci-items');items.innerHTML='';
+    datos.forEach(r=>{const it=agregarItemCI(evId,l.dataset.k);if(!it)return;it.querySelectorAll('[data-f]').forEach(e=>{if(r[e.dataset.f]!=null)e.value=r[e.dataset.f];});});
+  });
+  actualizarCondicionalesCI();
+}
+document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#ciCampos'))actualizarCondicionalesCI();});
+
+/* ---------- Ayudas de redacción ---------- */
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function fechaLarga(iso){if(!iso)return '[fecha]';const[y,m,d]=iso.split('-');return (+d)+' de '+MESES[+m-1]+' de '+y;}
+function numeroLetras(n){
+  n=parseInt(n,10);if(!(n>0))return '';
+  const u=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte',
+    'veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+  const d=['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+  let t=n<30?u[n]:(n<100?d[Math.floor(n/10)]+(n%10?' y '+u[n%10]:''):String(n));
+  return t+' ('+String(n).padStart(2,'0')+')';
+}
+function unirLista(arr,sep,ultimo){if(arr.length<=1)return arr.join('');return arr.slice(0,-1).join(sep)+ultimo+arr[arr.length-1];}
+function persona(u){return [u.grado,u.nombre||'[nombre]'].filter(Boolean).join(' ')+(u.cc?' CC. '+u.cc:'');}
+function nombreCorto(nombre){const w=String(nombre||'').trim().split(/\s+/);if(w.length>=4)return w[0]+' '+w[2];if(w.length===3)return w[0]+' '+w[1];return w.join(' ');}
+function vietas(arr){return arr.filter(Boolean).map(t=>'* '+t+'\n\n').join('');}
+function encabezadoMun(d){return (d.municipio||'[MUNICIPIO]').toUpperCase();}
+
+/* ---------- Generadores ---------- */
+function generarRedSocial(d,o){
+  const red=o.red==='Otra'?(o.redOtra||'[red social]'):(o.red||'X');
+  let pin='*RIPOL5 - MEBUC - ACTIVIDADES DE VERIFICACIÓN FRENTE A PUBLICACIÓN DE '+(o.tituloTema||'ABUSO DE AUTORIDAD').toUpperCase()+' EN LA RED SOCIAL '+red.toUpperCase()+'*\n\n';
+  pin+='Dios y Patria '+o.dest+', '+d.saludo.texto+'.\n\n';
+  pin+='Teniendo en cuenta la publicación realizada a través del perfil de la red social '+red+' por '+(o.autorDesc?o.autorDesc+', ':'')+'*'+(o.autor||'[autor]')+'*, en la cual se dio a conocer '+(o.tema||'[contenido de la publicación]')+', es preciso indicar lo siguiente:\n\n';
+  const b=[];
+  b.push('*Los hechos se registraron el '+fechaLarga(d.fechaIso)+', aproximadamente a las '+(d.horaFmt||'[hora]')+' horas*, en '+(d.lugar||'[lugar]')+(o.contexto?', '+o.contexto:'')+'.');
+  if(o.osNum)b.push('Los uniformados que participaron en el procedimiento se encontraban relacionados en la Orden de Servicio No. '+o.osNum+(o.osAnexo?', Anexo '+o.osAnexo:'')+(o.osNombre?', denominada “'+o.osNombre+'”':'')+', en cumplimiento de las actividades allí dispuestas.');
+  const unis=(o.unis||[]).filter(u=>u.nombre);
+  if(unis.length===1)b.push('De acuerdo con la verificación realizada, el uniformado que habría intervenido en el procedimiento corresponde al *'+persona(unis[0])+'*.');
+  else if(unis.length>1)b.push('De acuerdo con la verificación realizada, los uniformados que habrían intervenido en el procedimiento corresponden al *'+unirLista(unis.map(persona),'; ',' y el ')+'*.');
+  if(o.discRad||o.discOficina)b.push('Con ocasión de estos hechos, la '+(o.discOficina||'Oficina de Control Disciplinario Interno')+' aperturó investigación disciplinaria'+(o.discRad?' bajo el radicado *'+o.discRad+'*':'')+'.'+(o.discDecision?' Una vez surtidas las actuaciones correspondientes, la decisión adoptada fue '+o.discDecision+'.':''));
+  const carg=[];if(o.metodo)carg.push('MÉTODO: '+o.metodo);if(o.hecho)carg.push('HECHO: '+o.hecho);if(o.producto)carg.push('CÓDIGO DE PRODUCTO: '+o.producto);
+  if(carg.length)b.push('La novedad fue cargada oportunamente, mediante el '+unirLista(carg,', ',' y ')+'.');
+  return pin+vietas(b.concat(aspectosData));
+}
+function generarLesionadoProc(d,o){
+  const les=(o.lesionados||[]).filter(x=>x.nombre),ile=(o.ilesos||[]).filter(x=>x.nombre),tir=(o.tiradores||[]).filter(x=>x.nombre);
+  const doc=x=>'*'+x.nombre+(x.num?' '+(x.doc||'CC.')+' '+x.num:'')+'*';
+  let pin='*RIPOL5 MEBUC - '+(les.length>1?'LESIONADOS':'LESIONADO')+' POR ARMA DE FUEGO DURANTE PROCEDIMIENTO POLICIAL EN EL MPIO. DE '+encabezadoMun(d)+'*\n\n';
+  pin+='Dios y patria '+o.dest+', '+d.saludo.texto+'.\n\n';
+  let p='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en *'+(d.lugar||'[lugar]')+'*, ';
+  p+=(les.length>1?'resultaron capturados y lesionados':'resultó capturado y lesionado')+' por arma de fuego durante procedimiento policial ';
+  p+=(les.length?les:[{nombre:'[nombre]'}]).map(x=>doc(x)+(x.lesion?', quien presenta '+x.lesion:'')).join('; y ');
+  if(ile.length===1)p+=', así mismo el otro capturado saldría ileso en el procedimiento y correspondería a '+doc(ile[0]);
+  else if(ile.length>1)p+=', así mismo los otros capturados saldrían ilesos en el procedimiento y corresponderían a '+unirLista(ile.map(doc),', ',' y ');
+  pin+=p+'.\n\n';
+  const b=aspectosData.slice();
+  if(tir.length){
+    let t='Durante la reacción policial, '+tir.map((x,i)=>(i?'entretanto, ':'')+'el *'+[x.grado,x.nombre].filter(Boolean).join(' ')+(x.cc?', identificado con CC. '+x.cc:'')+'*, habría accionado'+(x.veces?' en '+numeroLetras(x.veces)+' oportunidades':'')+' la pistola institucional'+(x.serie?' de serie '+x.serie:'')).join('; ')+'.';
+    if(o.lote)t+=' El lote de la munición correspondería al *'+o.lote+'*.';
+    b.push(t);
+  }else if(o.lote)b.push('El lote de la munición correspondería al *'+o.lote+'*.');
+  if(b.length)pin+='*Aspectos de interés*\n\n'+vietas(b);
+  return pin;
+}
+function generarAccidente(d,o){
+  const unis=(o.unis||[]).filter(u=>u.nombre),varios=unis.length>1;
+  let pin='*RIPOL5 MEBUC - '+(varios?'UNIFORMADOS LESIONADOS':'UNIFORMADO LESIONADO')+' EN ACCIDENTE DE TRÁNSITO EN EL MPIO. DE '+encabezadoMun(d)+'*\n\n';
+  pin+='Dios y patria '+o.dest+', '+d.saludo.texto+'.\n\n';
+  pin+='El '+(d.fechaFmt||'[fecha]')+' sobre las '+(d.horaFmt||'[hora]')+' horas, en la *'+(d.lugar||'[lugar]')+'*, '+
+    (varios?'resultaron lesionados los':'resultó lesionado el')+' *'+(unis.length?unirLista(unis.map(persona),', ',' y '):'[uniformado]')+'*'+
+    (o.unidad?(varios?' adscritos':' adscrito')+' a la *'+o.unidad+'*':'')+'.\n\n';
+  const b=[];
+  if(o.actividad||o.vehSiglas||o.vehPlaca){
+    let t='Los hechos se habrían presentado cuando '+(varios?'los uniformados se encontraban':'el uniformado se encontraba')+' realizando '+(o.actividad||'[actividad]');
+    if(o.vehSiglas||o.vehPlaca)t+=' en la '+(o.vehTipo||'motocicleta institucional')+' de *'+[o.vehSiglas?'siglas '+o.vehSiglas:'',o.vehPlaca?'placa '+o.vehPlaca:''].filter(Boolean).join(', ')+'*'+(o.docVigente?' (documentación vigente)':'');
+    b.push(t+'.');
+  }
+  if(o.terNombre||o.dinamica||o.terPlaca){
+    let t=(o.terGenero||'El conductor')+(o.terVeh||o.terPlaca?' del vehículo'+(o.terVeh?' '+o.terVeh:'')+(o.terPlaca?' de placa '+o.terPlaca:''):'');
+    if(o.terNombre)t+=' '+o.terNombre+(o.terCC?' CC. '+o.terCC:'');
+    if(o.dinamica)t+=' *'+o.dinamica+'*';
+    b.push(t+'.');
+  }
+  const conLes=unis.filter(u=>u.lesion);
+  if(conLes.length){
+    let t=conLes.map((u,i)=>(i?(i===conLes.length-1?'mientras que ':''):'')+'el '+[u.grado,nombreCorto(u.nombre)].filter(Boolean).join(' ')+' presentaría *'+u.lesion+'*').join('; ');
+    t=t.charAt(0).toUpperCase()+t.slice(1);
+    if(o.traslado)t+=', siendo '+(varios?'trasladados':'trasladado')+' a '+o.traslado;
+    b.push(t+'.');
+  }
+  const todo=b.concat(aspectosData);
+  if(todo.length)pin+='*Aspectos de interés*\n\n'+vietas(todo);
+  return pin;
+}
+function generarVerifServicio(d,o){
+  let pin='*RIPOL5 - MEBUC - VERIFICACIÓN AL SERVICIO DE POLICÍA EN '+(o.unidadTit||'[UNIDAD]').toUpperCase()+'*\n\n';
+  pin+='Dios y Patria '+o.dest+', '+d.saludo.texto+'.\n\n';
+  pin+='El '+(d.fechaFmt||'[fecha]')+' se tuvo conocimiento de '+(o.conocimiento||'[descripción]')+'.\n\n';
+  if(aspectosData.length)pin+='*Aspectos de interés*\n\n'+vietas(aspectosData);
+  return pin;
+}
+function generarProcIrregular(d,o){
+  let pin='*RIPOL5 – MEBUC – VERIFICACIÓN DEL SERVICIO DE POLICÍA FRENTE A PRESUNTO PROCEDIMIENTO IRREGULAR EN '+encabezadoMun(d)+'*\n\n';
+  pin+='Dios y Patria, '+o.dest+' '+d.saludo.texto+'.\n\n';
+  pin+='El '+(d.fechaFmt||'[fecha]')+' se tuvo conocimiento de '+(o.conocimiento||'[descripción]')+'.\n\n';
+  return pin+vietas(aspectosData);
+}
+const GENERADORES_CI={contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
+  contra_verif_servicio:generarVerifServicio,contra_proc_irregular:generarProcIrregular};
 
 /* ---------- Generación de PIN ---------- */
 function generarPIN(){
@@ -2136,25 +2470,14 @@ function generarPIN(){
   });
   const evId=Object.keys(EVENTOS).find(k=>EVENTOS[k]===eventoSeleccionado);
   let pin='';
-  const d={fechaFmt,horaFmt,municipio,lugar,victimas,victimarios,saludo};
-  if(evId.startsWith('oro_'))pin=generarOro20(evId,d);
-  else if(evId==='contra_verificacion_x')pin=generarContraVerificacionX(d);
+  const d={fechaFmt,fechaIso:fecha,horaFmt,municipio,lugar,victimas,victimarios,saludo};
+  if(GENERADORES_CI[evId])pin=GENERADORES_CI[evId](d,leerCI());
+  else if(evId.startsWith('oro_'))pin=generarOro20(evId,d);
   else if(evId==='contra_policial_lesionado')pin=generarContraPolicialLesionado(d);
   else if(evId==='contra_servicio_policia')pin=generarContraServicioPolicia(d);
   document.getElementById('output').textContent=pin;
   document.getElementById('output').scrollIntoView({behavior:'smooth'});
   borrarBorrador(); // el borrador se borra al generar el PIN
-}
-
-function leerSpoaDeContenedor(containerId){
-  const anotaciones=[];
-  document.querySelectorAll('#'+containerId+' .spoa-row').forEach(row=>{
-    const cantidad=row.querySelector('.spo-cantidad').value.trim();
-    const delito=row.querySelector('.spo-delito').value.trim();
-    const anos=row.querySelector('.spo-anos').value.trim();
-    if(delito&&anos)anotaciones.push({cantidad,delito,anos});
-  });
-  return anotaciones;
 }
 
 function construirBloqueSpoa(etiqueta,nombre,cedula,anotaciones,indiceInicial){
@@ -2212,24 +2535,19 @@ function generarOro20(evId,d){
   }
   if(aspectosData.length>0){pin+='*Aspectos de interés*\n\n';aspectosData.forEach(a=>{pin+='* '+a+'\n\n';});}
 
-  const spoaVictima=leerSpoaDeContenedor('spoContainerVictima');
-  pin+=construirBloqueSpoa('La víctima',vPrincipal.nombre,vPrincipal.cedula,spoaVictima,0);
-  if(d.victimarios.length>0){
-    const vmRef=d.victimarios[0];
-    pin+=construirBloqueSpoa('El victimario',vmRef.nombre,vmRef.cedula,leerSpoaDeContenedor('spoContainerVictimario'),spoaVictima.length);
-  }
+  // Antecedentes SPOA de cada persona (víctimas, victimarios y capturados)
+  const ROL_SPOA={v:'La víctima',vm:'El victimario',cap:'El capturado'};
+  const personas=personasPin();let indiceSpoa=0;
+  document.querySelectorAll('#spoaBloques .spoa-bloque').forEach(b=>{
+    const p=personas.find(x=>x.pid===b.dataset.pid);if(!p)return;
+    const an=leerFilasSpoa(b);
+    pin+=construirBloqueSpoa(ROL_SPOA[p.rol],p.nombre,p.cc,an,indiceSpoa);indiceSpoa+=an.length;
+  });
 
   const zapNum=document.getElementById('zapNumero').value.trim();
   const modalidadVal=document.getElementById('modalidad').value.trim();
   pin+='Zona de atención: '+(zapNum||'POR ESTABLECER')+'\n';
   pin+='Modalidad: '+(modalidadVal||'POR ESTABLECER')+'\n';
-  return pin;
-}
-
-function generarContraVerificacionX(d){
-  let pin='*RIPOL5 - MEBUC - ACTIVIDADES DE VERIFICACIÓN FRENTE A PUBLICACIÓN DE ABUSO DE AUTORIDAD EN LA RED SOCIAL X*\n\n';
-  pin+='Dios y Patria mi capitán, '+d.saludo.texto+'.\n\n';
-  pin+='(Completa los campos del evento de verificación)\n';
   return pin;
 }
 
@@ -2286,8 +2604,9 @@ function guardarBorrador(){
     hayVictimarios:document.getElementById('toggleVictimarios').checked,
     victimarios:leerTarjetas('#victimariosContainer .item-card',CAMPOS_VM),
     capturados:leerTarjetas('#capturadosContainer .item-card',CAMPOS_CAP),
-    spoaV:leerTarjetas('#spoContainerVictima .spoa-row',CAMPOS_SPO),
-    spoaVm:leerTarjetas('#spoContainerVictimario .spoa-row',CAMPOS_SPO),
+    spoa:[...document.querySelectorAll('#spoaBloques .spoa-bloque')].map(b=>{const p=personasPin().find(x=>x.pid===b.dataset.pid);
+      return p?{rol:p.rol,idx:p.idx,filas:leerTarjetas('#spoaBloques .spoa-bloque[data-pid="'+b.dataset.pid+'"] .spoa-row',CAMPOS_SPO)}:null;}).filter(Boolean),
+    ci:(ev&&FORM_CI[ev])?leerCI():null,
     aspectos:aspectosData.slice(),
     aspEditor:caja&&!caja.classList.contains('hidden')?{texto:val('aspectoInputText'),idx:aspectoEditIndex}:null,
     zap:val('zapNumero'),modalidad:val('modalidad'),output:out};
@@ -2321,8 +2640,15 @@ function restaurarBorrador(){
         ponerTarjetas('#victimariosContainer .item-card',d.victimarios||[],agregarVictimario,CAMPOS_VM);renumerarVictimarios();
       }
       ponerTarjetas('#capturadosContainer .item-card',d.capturados||[],agregarCapturado,CAMPOS_CAP);actualizarNumsCapturados();
-      ponerTarjetas('#spoContainerVictima .spoa-row',d.spoaV||[],()=>agregarSPO('victima'),CAMPOS_SPO);
-      ponerTarjetas('#spoContainerVictimario .spoa-row',d.spoaVm||[],()=>agregarSPO('victimario'),CAMPOS_SPO);
+      if(d.ci)ponerCI(d.ev,d.ci);
+      let spoa=d.spoa||[];
+      if(!d.spoa){if((d.spoaV||[]).length)spoa.push({rol:'v',idx:0,filas:d.spoaV});if((d.spoaVm||[]).length)spoa.push({rol:'vm',idx:0,filas:d.spoaVm});}
+      spoa.forEach(bq=>{
+        const p=personasPin().find(x=>x.rol===bq.rol&&x.idx===bq.idx);if(!p)return;
+        const b=agregarBloqueSpoa(p.pid);if(!b)return;
+        b.querySelector('.spoa-filas').innerHTML='';
+        (bq.filas||[]).forEach(f=>{const r=agregarFilaSpoa(b);CAMPOS_SPO.forEach(k=>{const e=r.querySelector('.'+k);if(e&&f[k]!=null)e.value=f[k];});});
+      });
       aspectosData=(d.aspectos||[]).slice();renderAspectosList();
       if(d.aspEditor){
         aspectoEditIndex=(d.aspEditor.idx===undefined)?null:d.aspEditor.idx;
@@ -2639,9 +2965,9 @@ function renderSearchResults(raw) {
 }
 
 /* ---------------- Explorador jerárquico ---------------- */
-function crumbBar(parts) {
-  // parts: [{label, onClick|null}]
-  return `<div class="crumbbar">${parts.map((p, i) => {
+function crumbBar(parts, atras) {
+  // parts: [{label, onClick|null}]; atras: a dónde vuelve el botón "← Atrás"
+  return (atras ? `<button class="back-btn" type="button" data-crumb="${atras}">← Atrás</button>` : '') + `<div class="crumbbar">${parts.map((p, i) => {
     const sep = i > 0 ? '<span class="crumb-sep">›</span>' : '';
     if (p.onClick === null) return `${sep}<span class="crumb current">${escapeHtml(p.label)}</span>`;
     return `${sep}<span class="crumb" data-crumb="${p.onClick}">${escapeHtml(p.label)}</span>`;
@@ -2669,7 +2995,7 @@ function renderExplorer() {
     groups.forEach(g => { if (g.distrito === selDistrito && !estOrder.includes(g.estacion)) estOrder.push([g.estacion, g.oe]); });
     const uniqueEst = [...new Map(estOrder).entries()].sort((a,b) => a[1]-b[1]).map(e => e[0]);
     mainEl.innerHTML = `
-      ${crumbBar([{label: selDistrito, onClick: 'root'}])}
+      ${crumbBar([{label: 'Distritos', onClick: 'root'}, {label: selDistrito, onClick: null}], 'root')}
       <div class="section-label">Selecciona una estación</div>
       <div class="chip-grid">
         ${uniqueEst.map(e => `<div class="chip-btn" data-goestacion="${e}"><span class="dot" style="background:var(--${distClass(selDistrito)})"></span>${e}</div>`).join('')}
@@ -2690,7 +3016,7 @@ function renderExplorer() {
     });
     const caisSorted = [...seen.entries()].sort((a,b) => a[1].oc - b[1].oc);
     mainEl.innerHTML = `
-      ${crumbBar([{label: selDistrito, onClick: 'root'}, {label: selEstacion, onClick: 'distrito'}])}
+      ${crumbBar([{label: 'Distritos', onClick: 'root'}, {label: selDistrito, onClick: 'distrito'}, {label: selEstacion, onClick: null}], 'distrito')}
       <div class="section-label">CAI de la estación ${escapeHtml(selEstacion)}</div>
       <div class="cai-list">
         ${caisSorted.map(([cai, info]) => {
@@ -2717,10 +3043,11 @@ function renderExplorer() {
     const isStation = selCai === selEstacion;
     mainEl.innerHTML = `
       ${crumbBar([
-        {label: selDistrito, onClick: 'root'},
-        {label: selEstacion, onClick: 'distrito'},
+        {label: 'Distritos', onClick: 'root'},
+        {label: selDistrito, onClick: 'distrito'},
+        {label: selEstacion, onClick: 'estacion'},
         {label: isStation ? selCai : 'CAI ' + selCai, onClick: null}
-      ])}
+      ], 'estacion')}
       <div class="section-label">Cuadrantes</div>
       ${cuadrantes.map(g => cuadranteCardHtml(g, [], true)).join('')}
       <button class="add-btn" id="addCuadranteBtn">+ Agregar cuadrante a ${isStation ? escapeHtml(selCai) : 'CAI ' + escapeHtml(selCai)}</button>
@@ -2753,6 +3080,8 @@ mainEl.addEventListener('click', (e) => {
     const to = crumb.dataset.crumb;
     if (to === 'root') { selDistrito = null; selEstacion = null; selCai = null; }
     else if (to === 'distrito') { selEstacion = null; selCai = null; }
+    else if (to === 'estacion') { selCai = null; }
+    window.scrollTo(0, 0);
     render();
     return;
   }
