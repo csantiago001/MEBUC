@@ -2806,7 +2806,7 @@ function generarSocializacion(d,o){
   let unidad;
   const [tipo,nombre]=(o.unidad||'').split('|');
   const T={est:'Estación',cai:'CAI',sub:'Subestación'}[tipo]||tipo;
-  if(T&&nombre)unidad=(T==='CAI'?'al':'a la')+' *'+(T+' '+nombre).toUpperCase()+'*';
+  if(T&&nombre)unidad=T==='CAI'?'al *'+('CAI '+nombre).toUpperCase()+'*':'a la *'+(T+' de Policía '+nombre).toUpperCase()+'*';
   else{
     const x=(o.unidadOtra||'[UNIDAD]').trim().toUpperCase();
     unidad=(/^(SUB)?ESTACI[OÓ]N|^SECCI[OÓ]N|^SECCIONAL|^UNIDAD|^OFICINA|^COMPA[ÑN][IÍ]A|^PATRULLA|^SALA|^SUBUNIDAD/.test(x)?'a la':'al')+' *'+x+'*';
@@ -3203,7 +3203,7 @@ window.mebucUnidades = function() {
   datos().distritos.forEach(d => (d.unidades || []).forEach(u => {
     out.push({
       grupo: etqUnidad(u),
-      opciones: [{ valor: u.tipo + '|' + u.nombre, etiqueta: etqUnidad(u) }]
+      opciones: [{ valor: u.tipo + '|' + u.nombre, etiqueta: u.tipo + ' de Policía ' + u.nombre }]
         .concat((u.cais || []).map(c => ({ valor: 'CAI|' + c.nombre, etiqueta: 'CAI ' + c.nombre })))
     });
   }));
