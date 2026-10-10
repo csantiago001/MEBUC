@@ -317,6 +317,7 @@ html.letra-2 .tab{font-size:1.08em;}
 .ci-titulo{font-weight:800;color:var(--azul);font-size:.88em;margin:16px 0 8px;padding-top:10px;border-top:1px dashed var(--gris2);}
 #ciCampos>.ci-titulo:first-child{border-top:none;padding-top:0;margin-top:4px;}
 .ci-lista{margin-bottom:12px;}
+#ciCampos .ci-item textarea{min-height:96px;}
 #ciCampos ::placeholder{color:#a3acbb;font-style:italic;opacity:1;}
 html.oscuro #ciCampos ::placeholder{color:#62708a;}
 .ci-chk{display:flex;align-items:center;gap:8px;font-size:.9em;margin:-4px 0 12px;color:var(--texto2);}
@@ -1190,6 +1191,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
           <option value="oro_deceso">DECESO HOSPITALARIO</option>
           <option value="oro_homicidio_af">HOMICIDIO CON ARMA DE FUEGO</option>
           <option value="oro_homicidio_cp">HOMICIDIO CON ARMA CORTOPUNZANTE</option>
+          <option value="oro_socializacion">SOCIALIZACIÓN A UNIDADES</option>
         </select>
       </div>
       <div class="event-card">
@@ -1248,7 +1250,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <!-- CONTRAINTELIGENCIA: datos propios del tipo de PIN -->
   <div class="section hidden" id="sectionCI">
-    <div class="section-title"><div class="icon">🕵️</div>Datos de la verificación</div>
+    <div class="section-title"><div class="icon">🕵️</div><span id="ciTitulo">Datos de la verificación</span></div>
     <div class="form-group">
       <label>Dirigido a</label>
       <select id="ciDestinatario"><option>mi General</option><option>mi Coronel</option><option>mi Teniente Coronel</option><option>mi Mayor</option><option>mi Capitán</option><option>mi Teniente</option></select>
@@ -1607,6 +1609,7 @@ const EVENTOS={
   oro_deceso:{categoria:'ORO 20',nombre:'DECESO HOSPITALARIO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: La víctima fue atacada y posteriormente...'},{titulo:'Traslado y deceso',placeholder:'Ej: La víctima fue trasladada a la clínica donde falleció...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'},
   oro_homicidio_af:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios llegaron al lugar y dispararon...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperaron vainillas de arma de fuego...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
   oro_homicidio_cp:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios atacaron al occiso con un arma cortopunzante...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
+  oro_socializacion:{categoria:'ORO 20',nombre:'SOCIALIZACIÓN A UNIDADES',municipioLibre:false,formCI:true,sinDatos:true,saludo:{destinatario:'mi Capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_verificacion_x:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PUBLICACIÓN EN REDES SOCIALES',municipioLibre:false,formCI:true,saludo:{destinatario:'mi Capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_lesionado_proc:{categoria:'CONTRAINTELIGENCIA',nombre:'LESIONADO POR ARMA DE FUEGO EN PROCEDIMIENTO POLICIAL',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_accidente:{categoria:'CONTRAINTELIGENCIA',nombre:'UNIFORMADOS LESIONADOS EN ACCIDENTE DE TRÁNSITO',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
@@ -1650,6 +1653,7 @@ function seleccionarEvento(id){
   document.getElementById('lugar').closest('.form-group').classList.toggle('hidden',!!c.sinLugar);
   document.getElementById('hora').closest('.form-group').classList.toggle('hidden',!!c.sinHora);
   document.getElementById('fecha').closest('.form-group').querySelector('label').textContent=c.etiquetaFecha||'Fecha del hecho';
+  document.getElementById('sectionDatos').classList.toggle('hidden',!!c.sinDatos);
   renderFormCI(id);
   document.getElementById('sectionZap').classList.toggle('hidden',!c.muestraZap);
   aspectosData=[];aspectoEditIndex=null;
@@ -1657,7 +1661,7 @@ function seleccionarEvento(id){
   document.getElementById('aspectoInputBox').classList.add('hidden');
   document.getElementById('btnAgregarAspecto').classList.remove('hidden');
   document.getElementById('aspectoInputText').value='';
-  const noAspectos=['contra_policial_lesionado'].includes(id);
+  const noAspectos=['contra_policial_lesionado','oro_socializacion'].includes(id);
   document.getElementById('sectionAspectos').classList.toggle('hidden',noAspectos);
   document.getElementById('victimasContainer').innerHTML='';
   document.getElementById('victimariosContainer').innerHTML='';
@@ -2263,7 +2267,23 @@ const C_GRADO={k:'grado',l:'Grado',t:'sel',ops:GRADOS};
 const C_NOMBRE={k:'nombre',l:'Nombre completo',ph:'Nombres y apellidos'};
 const C_CC={k:'cc',l:'Cédula',num:true,ph:'1102817216'};
 
+const SOC_TEMA='PO-2026-000203-MEBUC y Correo Electrónico N° 7024 del 09/08/2026 "Posibles Acciones Criminales contra la Fuerza Pública en la MEBUC como retaliación por el desarrollo de la Operación Gladiador desarrollada el 08/08/2026 en el municipio de Lebrija".';
+const SOC_PUNTOS=[
+  'Por parte del Comando se desplegó orden mediante Correo Electrónico N° 07105 del 02/08/2026 "Orden y disposiciones operativas para prevenir hechos de afectación a la vida en el municipio de Floridablanca por parte del GDCO Los del Sur contra actores delincuenciales independientes por el control territorial del tráfico de estupefacientes, principalmente en los barrios Bucarica, Paragüitas y Caracolí".',
+  'Por parte del Comando se desplegó orden mediante correo electrónico N° 06149 "Orden y disposiciones preventivas para la protección de funcionarios e instalaciones del INPEC", especialmente en inmediaciones de Cárcel Palogordo, Sede de la Dirección Regional Oriente INPEC ubicada en cabecera Bucaramanga y establecimiento de comercio "Sabor Argentino" ubicado en Girón.',
+  'Asimismo se da a conocer alerta sobre el posible desarrollo de actividades terroristas por parte del GAO ELN, Frente de guerra Nor-Oriental.'
+];
+const SOC_CIERRE='Frente a lo anterior se impartió instrucción al funcionario de turno sobre las diferentes medidas de seguridad operativa y demás acciones de prevención y control policial, que permitan evitar la materialización de estos hechos en la jurisdicción, así mismo, se da a conocer la línea contra el crimen';
 const FORM_CI={
+  oro_socializacion:{dest:'mi Capitán',titulo:'Datos de la socialización',recordar:['dest','tema','puntos','cierre'],campos:[
+    {t:'unidad',k:'unidad',l:'Unidad a la que se socializó'},
+    {t:'txt',k:'unidadOtra',l:'Escribe la unidad',ph:'EL CARMEN',si:['unidad','otra|']},
+    {t:'txt',k:'folio',l:'Número de folio',num:true,ph:'371'},
+    {t:'titulo',l:'📝 Contenido (se guarda para la próxima vez)'},
+    {t:'area',k:'tema',l:'Tema socializado (va después de “sobre”)',def:SOC_TEMA},
+    {t:'lista',k:'puntos',l:'• Puntos',item:'Punto',defItems:SOC_PUNTOS.map(t=>({texto:t})),campos:[{k:'texto',l:'Texto del punto',t:'area',full:true}]},
+    {t:'area',k:'cierre',l:'Párrafo final (va antes de “quedando soportado en el Folio”)',def:SOC_CIERRE}
+  ]},
   contra_verificacion_x:{dest:'mi Capitán',campos:[
     {t:'sel',k:'red',l:'Red social',ops:REDES},
     {t:'txt',k:'redOtra',l:'¿Cuál red social?',ph:'Ej: Reddit',si:['red','Otra']},
@@ -2318,7 +2338,13 @@ function htmlCampoCI(c){
   const lab='<label>'+escAttr(c.l||'')+'</label>';
   const extra=(c.num?' inputmode="numeric"':'')+(c.ph?' placeholder="Ej: '+escAttr(c.ph)+'"':'');
   if(c.t==='sel')return '<div class="form-group"'+(c.si?' data-si="'+c.si[0]+'='+escAttr(c.si[1])+'"':'')+'>'+lab+'<select data-k="'+c.k+'">'+c.ops.map(o=>'<option>'+escAttr(o)+'</option>').join('')+'</select></div>';
-  if(c.t==='area')return '<div class="form-group">'+lab+'<textarea data-k="'+c.k+'"'+extra+'></textarea></div>';
+  if(c.t==='area')return '<div class="form-group">'+lab+'<textarea data-k="'+c.k+'"'+extra+'>'+escAttr(c.def||'')+'</textarea></div>';
+  if(c.t==='unidad'){
+    const us=typeof window.mebucUnidades==='function'?window.mebucUnidades():[];
+    return '<div class="form-group">'+lab+'<select data-k="'+c.k+'"><option value="">— Selecciona la unidad —</option>'+
+      us.map(e=>'<optgroup label="Estación '+escAttr(e.estacion)+'">'+e.opciones.map(o=>'<option value="'+escAttr(o.valor)+'">'+escAttr(o.etiqueta)+'</option>').join('')+'</optgroup>').join('')+
+      '<option value="otra|">✏️ Otra (escribirla)</option></select></div>';
+  }
   if(c.t==='chk')return '<label class="ci-chk"><input type="checkbox" data-k="'+c.k+'"'+(c.def?' checked':'')+'> '+escAttr(c.l)+'</label>';
   return '<div class="form-group"'+(c.si?' data-si="'+c.si[0]+'='+escAttr(c.si[1])+'"':'')+'>'+lab+'<input type="text" data-k="'+c.k+'"'+extra+' value="'+escAttr(c.def||'')+'"></div>';
 }
@@ -2339,6 +2365,7 @@ function renderFormCI(evId){
   const f=FORM_CI[evId];
   if(!f){sec.classList.add('hidden');cont.innerHTML='';return;}
   sec.classList.remove('hidden');
+  document.getElementById('ciTitulo').textContent=f.titulo||'Datos de la verificación';
   document.getElementById('ciDestinatario').value=f.dest;
   cont.innerHTML=f.campos.map(c=>{
     if(c.t==='titulo')return '<div class="ci-titulo">'+escAttr(c.l)+'</div>';
@@ -2348,7 +2375,20 @@ function renderFormCI(evId){
     return htmlCampoCI(c);
   }).join('');
   f.campos.filter(c=>c.t==='lista'&&c.min).forEach(c=>{for(let i=0;i<c.min;i++)agregarItemCI(evId,c.k);});
+  // Textos guardados la última vez (o los de ejemplo)
+  let guardado=null;
+  if(f.recordar){try{guardado=JSON.parse(localStorage.getItem('mebuc_plantilla_'+evId)||'null');}catch(e){}}
+  f.campos.filter(c=>c.t==='lista'&&c.defItems).forEach(c=>{
+    if(guardado&&Array.isArray(guardado[c.k]))return;
+    c.defItems.forEach(v=>{const it=agregarItemCI(evId,c.k);if(it)it.querySelectorAll('[data-f]').forEach(e=>{if(v[e.dataset.f]!=null)e.value=v[e.dataset.f];});});
+  });
+  if(guardado)ponerCI(evId,guardado);
   actualizarCondicionalesCI();
+}
+function recordarPlantillaCI(evId,o){
+  const f=FORM_CI[evId];if(!f||!f.recordar)return;
+  const g={};f.recordar.forEach(k=>{g[k]=o[k];});
+  try{localStorage.setItem('mebuc_plantilla_'+evId,JSON.stringify(g));}catch(e){}
 }
 function defLista(evId,k){return (FORM_CI[evId]||{campos:[]}).campos.find(c=>c.t==='lista'&&c.k===k);}
 function agregarItemCI(evId,k){
@@ -2492,7 +2532,23 @@ function generarProcIrregular(d,o){
   pin+='El '+(d.fechaFmt||'[fecha]')+' se tuvo conocimiento de '+(o.conocimiento||'[descripción]')+'.\n\n';
   return pin+vietas(aspectosData);
 }
-const GENERADORES_CI={contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
+function generarSocializacion(d,o){
+  let unidad;
+  const [tipo,nombre]=(o.unidad||'').split('|');
+  if(tipo==='est')unidad='a la *ESTACIÓN DE POLICÍA '+nombre+'*';
+  else if(tipo==='cai')unidad='al *'+nombre+'*';
+  else unidad='al *'+((o.unidadOtra||'[UNIDAD]').toUpperCase())+'*';
+  let tema=(o.tema||'[tema socializado]').trim();
+  if(!/[.!?»"”]$/.test(tema))tema+='.';
+  let pin='Dios y patria '+o.dest+' '+d.saludo.texto+' respetuosamente me permito informar, se realizó socialización '+unidad+' sobre '+tema+'\n\n';
+  const puntos=(o.puntos||[]).map(x=>(x.texto||'').trim()).filter(Boolean);
+  if(puntos.length)pin+=puntos.map(t=>'• '+t).join('\n\n')+'\n\n';
+  const cierre=(o.cierre||'').trim().replace(/[.,;\s]+$/,'');
+  pin+=(cierre?cierre+' ':'')+'quedando soportado en el Folio *'+(o.folio||'[folio]')+'*';
+  recordarPlantillaCI('oro_socializacion',o);
+  return pin;
+}
+const GENERADORES_CI={oro_socializacion:generarSocializacion,contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
   contra_verif_servicio:generarVerifServicio,contra_proc_irregular:generarProcIrregular};
 
 /* ---------- Generación de PIN ---------- */
@@ -2897,6 +2953,19 @@ function liveGroups() {
 }
 
 /* ---------------- Búsqueda de barrio para sugerir ZAP desde el GPS ---------------- */
+window.mebucUnidades = function() {
+  const est = new Map();
+  liveGroups().forEach(g => {
+    if (!est.has(g.estacion)) est.set(g.estacion, { oe: g.oe, cais: new Map() });
+    if (g.cai !== g.estacion && !est.get(g.estacion).cais.has(g.cai)) est.get(g.estacion).cais.set(g.cai, g.oc);
+  });
+  return [...est.entries()].sort((a, b) => a[1].oe - b[1].oe).map(([e, v]) => ({
+    estacion: e,
+    opciones: [{ valor: 'est|' + e.toUpperCase(), etiqueta: 'Estación ' + e }]
+      .concat([...v.cais.entries()].sort((a, b) => a[1] - b[1]).map(([c]) => ({ valor: 'cai|' + c.toUpperCase(), etiqueta: 'CAI ' + c })))
+  }));
+};
+
 window.mebucBuscarBarrio = function(barrio, municipio) {
   const nb = normalize(barrio).replace(/^barrio\s+/, '').trim();
   if (nb.length < 3) return [];
@@ -3390,7 +3459,7 @@ render();
   var urlApk = null, mostrando = false, ultimaRevision = 0, esperaPermiso = null, versionActual = 0;
 
   // Datos que se conservan entre versiones (cuadrantes editados en el Buscador)
-  var CONSERVAR = ['mebuc_edits_v1', 'mebuc_acceso', 'mebuc_config', 'mebuc_borrador', 'mebuc_tema', 'mebuc_letra', 'mebuc_gps_ok'];
+  var CONSERVAR = ['mebuc_edits_v1', 'mebuc_acceso', 'mebuc_config', 'mebuc_borrador', 'mebuc_tema', 'mebuc_letra', 'mebuc_gps_ok', 'mebuc_plantilla_oro_socializacion'];
 
   function estado(txt, error){ var e=$('updEstado'); e.textContent = txt || ''; e.classList.toggle('err', !!error); }
   function barra(pct){ $('updBar').style.display = 'block'; $('updBar').firstElementChild.style.width = pct + '%'; }
