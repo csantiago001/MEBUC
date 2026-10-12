@@ -1246,7 +1246,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
           <option value="contra_accidente">UNIFORMADOS LESIONADOS EN ACCIDENTE DE TRÁNSITO</option>
           <option value="contra_verif_servicio">VERIFICACIÓN AL SERVICIO DE POLICÍA</option>
           <option value="contra_proc_irregular">VERIFICACIÓN PRESUNTO PROCEDIMIENTO IRREGULAR</option>
-          <option value="contra_policial_lesionado">POLICIAL LESIONADO EN PROCESAMIENTO</option>
+          <option value="contra_policial_lesionado">POLICIAL LESIONADO EN PROCEDIMIENTO</option>
           <option value="contra_servicio_policia">SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA</option>
         </select>
       </div>
@@ -1324,7 +1324,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <!-- ASPECTOS -->
   <div class="section hidden" id="sectionAspectos">
-    <div class="section-title"><div class="icon">⚠️</div>Aspectos de interés</div>
+    <div class="section-title"><div class="icon">⚠️</div><span id="aspectosTitulo">Aspectos de interés</span></div>
     <div id="aspectosList"></div>
     <div class="aspecto-box hidden" id="aspectoInputBox">
       <label id="aspectoInputLabel">✏️ Escribe el aspecto de interés</label>
@@ -1826,7 +1826,7 @@ const EVENTOS={
   contra_accidente:{categoria:'CONTRAINTELIGENCIA',nombre:'UNIFORMADOS LESIONADOS EN ACCIDENTE DE TRÁNSITO',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_verif_servicio:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN AL SERVICIO DE POLICÍA',municipioLibre:false,formCI:true,sinLugar:true,sinHora:true,etiquetaFecha:'Fecha en que se tuvo conocimiento',saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_proc_irregular:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PRESUNTO PROCEDIMIENTO IRREGULAR',municipioLibre:true,formCI:true,sinLugar:true,sinHora:true,etiquetaFecha:'Fecha en que se tuvo conocimiento',saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
-  contra_policial_lesionado:{categoria:'CONTRAINTELIGENCIA',nombre:'POLICIAL LESIONADO EN PROCESAMIENTO',municipioLibre:false,saludo:{destinatario:'mi General',prefijo:'respetuosamente me permito informar la siguiente novedad'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:true,muestraUnidad:true,muestraTelefono:true,muestraVictimarios:false,tipoVictima:'policial'},
+  contra_policial_lesionado:{categoria:'CONTRAINTELIGENCIA',nombre:'POLICIAL LESIONADO EN PROCEDIMIENTO',municipioLibre:false,formCI:true,sinDatos:true,tituloAspectos:'Datos de interés',saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_servicio_policia:{categoria:'CONTRAINTELIGENCIA',nombre:'SERVICIO DE POLICÍA FRENTE A AFECTACIÓN A LA VIDA',municipioLibre:true,saludo:{destinatario:'mi general'},plantillaAspectos:[{titulo:'Materialización de los hechos',placeholder:'Ej: La materialización de los hechos se presentó en jurisdicción de la ZAP...'},{titulo:'Responsables de la ZAP',placeholder:'Ej: Responsables de la ZAP. SI Fredy Rubiano Ramos CC. 91456694...'},{titulo:'Motivo de policía',placeholder:'Ej: Al momento de los hechos se encontraban atendiendo un motivo de policía...'},{titulo:'Cobertura ZAP',placeholder:'Ej: Se encontraban cubriendo la ZAP...'}],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'víctima'}
 };
 
@@ -1872,7 +1872,8 @@ function seleccionarEvento(id){
   document.getElementById('aspectoInputBox').classList.add('hidden');
   document.getElementById('btnAgregarAspecto').classList.remove('hidden');
   document.getElementById('aspectoInputText').value='';
-  const noAspectos=['contra_policial_lesionado','oro_socializacion'].includes(id);
+  const noAspectos=['oro_socializacion'].includes(id);
+  document.getElementById('aspectosTitulo').textContent=c.tituloAspectos||'Aspectos de interés';
   document.getElementById('sectionAspectos').classList.toggle('hidden',noAspectos);
   document.getElementById('victimasContainer').innerHTML='';
   document.getElementById('victimariosContainer').innerHTML='';
@@ -2470,7 +2471,7 @@ function obtenerSaludoActual(){
 }
 
 /* ======================= CONTRAINTELIGENCIA: formularios por tipo de PIN ======================= */
-const GRADOS=['PT.','SI.','IT.','IJ.','SC.','CM.','ST.','TE.','CT.','MY.','TC.','CR.','PP.','AUX.'];
+const GRADOS=['PT.','SI.','IT.','IJ.','SC.','CM.','ST.','TE.','CT.','MY.','TC.','CR.','PP.','AUX.','AXP.'];
 const REDES=['X','Facebook','Instagram','TikTok','YouTube','WhatsApp','Threads','Telegram','Kwai','LinkedIn','Snapchat','Otra'];
 const DOCS=['CC.','CE.','CV.','PPT.','TI.','PEP.','Pasaporte'];
 const DESTINATARIOS=['mi General','mi Coronel','mi Teniente Coronel','mi Mayor','mi Capitán','mi Teniente'];
@@ -2519,6 +2520,14 @@ const FORM_CI={
     {t:'titulo',l:'🗂️ Cargue de la novedad (opcional)'},
     {t:'row3',campos:[{k:'metodo',l:'Método',num:true,ph:'2025070151'},{k:'hecho',l:'Hecho',num:true,ph:'202501008210'},{k:'producto',l:'Código de producto',num:true,ph:'2025020337…'}]}
   ]},
+  contra_policial_lesionado:{dest:'mi General',titulo:'Datos del policial lesionado',campos:[
+    {t:'estacion',k:'unidad',l:'Distrito y estación (va en el encabezado)'},
+    {t:'area',k:'hechos',l:'Hechos',ph:'Al llegar a las instalaciones de la CLIPO, se entrevista al auxiliar de Policía, quien manifiesta que…'},
+    {t:'lista',k:'unis',l:'👮 Datos del uniformado',item:'Uniformado',min:1,campos:[C_GRADO,C_NOMBRE,C_CC,
+      {k:'expedida',l:'Expedida en',ph:'CÚCUTA'},{k:'nacimiento',l:'Fecha de nacimiento',t:'fecha'},{k:'residencia',l:'Residencia',ph:'COMANDO METROPOLITANA'},
+      {k:'telefono',l:'Teléfono',num:true,ph:'3123432922'},
+      {k:'lesiones',l:'Lesiones (una por línea)',t:'area',full:true,ph:'HERIDA PARTE SUPERIOR DEL MENTÓN'}]}
+  ]},
   contra_lesionado_proc:{dest:'mi General',campos:[
     {t:'lista',k:'lesionados',l:'🩸 Capturados lesionados',item:'Capturado lesionado',min:1,campos:[C_NOMBRE,{k:'doc',l:'Documento',t:'sel',ops:DOCS},{k:'num',l:'Número',num:true,ph:'26216795'},
       {k:'lesion',l:'¿Qué presenta?',ph:'(02) impactos por arma de fuego (pierna derecha y talón derecho) sin revestir gravedad',full:true}]},
@@ -2563,6 +2572,13 @@ function htmlCampoCI(c){
     return '<div class="form-group">'+lab+'<select data-k="'+c.k+'"><option value="">— Selecciona la unidad —</option>'+
       us.map(e=>'<optgroup label="'+escAttr(e.grupo||('Estación '+e.estacion))+'">'+e.opciones.map(o=>'<option value="'+escAttr(o.valor)+'">'+escAttr(o.etiqueta)+'</option>').join('')+'</optgroup>').join('')+
       '<option value="otra|">✏️ Otra (escribirla)</option></select></div>';
+  }
+  if(c.t==='fecha')return '<div class="form-group">'+lab+'<input type="date" data-k="'+c.k+'"></div>';
+  if(c.t==='estacion'){
+    const ds=typeof window.mebucEstaciones==='function'?window.mebucEstaciones():[];
+    return '<div class="form-group">'+lab+'<select data-k="'+c.k+'"><option value="">— Selecciona —</option>'+
+      ds.map(d=>'<optgroup label="'+escAttr(d.distrito)+'">'+d.unidades.map(u=>{const v=(d.distrito+' – '+u).toUpperCase();return '<option value="'+escAttr(v)+'">'+escAttr(u)+'</option>';}).join('')+'</optgroup>').join('')+
+      '</select></div>';
   }
   if(c.t==='chk')return '<label class="ci-chk"><input type="checkbox" data-k="'+c.k+'"'+(c.def?' checked':'')+'> '+escAttr(c.l)+'</label>';
   return '<div class="form-group"'+(c.si?' data-si="'+c.si[0]+'='+escAttr(c.si[1])+'"':'')+'>'+lab+'<input type="text" data-k="'+c.k+'"'+extra+' value="'+escAttr(def||'')+'"></div>';
@@ -2821,7 +2837,27 @@ function generarSocializacion(d,o){
   recordarPlantillaCI('oro_socializacion',o);
   return pin;
 }
-const GENERADORES_CI={oro_socializacion:generarSocializacion,contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
+function puntosMiles(n){const x=String(n||'').replace(/\D/g,'');return x&&x===String(n).replace(/[.\s]/g,'')?x.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):String(n||'');}
+function edadDesde(iso){if(!iso)return null;const[y,m,d]=iso.split('-').map(Number);const h=new Date();let e=h.getFullYear()-y;if(h.getMonth()+1<m||(h.getMonth()+1===m&&h.getDate()<d))e--;return e>=0&&e<120?e:null;}
+function generarPolicialLesionado(d,o){
+  const unis=(o.unis||[]).filter(u=>u.nombre||u.cc),varios=unis.length>1;
+  let pin='*'+(varios?'POLICIALES LESIONADOS':'POLICIAL LESIONADO')+' EN PROCEDIMIENTO'+(o.unidad?' – '+o.unidad:'')+'*\n\n';
+  pin+='_Dios y patria, '+o.dest+', '+d.saludo.texto+', respetuosamente me permito informar la siguiente novedad:_\n\n';
+  pin+='*HECHOS:* '+(o.hechos||'[hechos]')+'\n\n';
+  (unis.length?unis:[{}]).forEach((u,i)=>{
+    pin+='*DATOS DEL UNIFORMADO'+(varios?' '+(i+1):'')+':*\n';
+    pin+='• Nombre: '+[u.grado,(u.nombre||'[nombre]').toUpperCase()].filter(Boolean).join(' ')+'\n';
+    if(u.cc)pin+='• C.C.: '+puntosMiles(u.cc)+(u.expedida?' de '+u.expedida.toUpperCase():'')+'\n';
+    if(u.nacimiento){const[y,m,dd]=u.nacimiento.split('-');pin+='• Fecha de nacimiento: '+dd+'/'+m+'/'+y+'\n';const e=edadDesde(u.nacimiento);if(e!=null)pin+='• Edad: '+e+' años.\n';}
+    if(u.residencia)pin+='• Residencia: '+u.residencia+'\n';
+    if(u.telefono)pin+='• Teléfono: '+u.telefono+'\n';
+    const les=(u.lesiones||'').split('\n').map(x=>x.trim()).filter(Boolean);
+    pin+='\n*LESIONES:*\n'+(les.length?les:['[lesión]']).map(x=>'• '+x).join('\n')+'\n\n';
+  });
+  if(aspectosData.length)pin+='*DATOS DE INTERÉS:*\n'+aspectosData.map(a=>'• '+a).join('\n\n');
+  return pin.trim();
+}
+const GENERADORES_CI={contra_policial_lesionado:generarPolicialLesionado,oro_socializacion:generarSocializacion,contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
   contra_verif_servicio:generarVerifServicio,contra_proc_irregular:generarProcIrregular};
 
 /* ---------- Generación de PIN ---------- */
@@ -3198,6 +3234,7 @@ reconstruir();
 function liveGroups() { return GRUPOS; }
 
 /* ---------------- Para el PIN: unidades (socialización) y barrio → ZAP (GPS) ---------------- */
+window.mebucEstaciones = () => datos().distritos.map(d => ({ distrito: d.nombre, unidades: (d.unidades || []).map(etqUnidad) }));
 window.mebucUnidades = function() {
   const out = [];
   datos().distritos.forEach(d => (d.unidades || []).forEach(u => {
