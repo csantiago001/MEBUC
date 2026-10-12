@@ -371,6 +371,25 @@ html.oscuro #adminOverlay input{background:#121826;color:#e6e9f0;border-color:#3
 .ci-pleg-cuerpo{padding:0 12px 12px;}
 .ci-pleg-acc{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .ci-pleg-acc .btn{flex:1;min-width:140px;}
+.am-homi{border:1.5px solid var(--gris2);border-radius:12px;overflow:hidden;margin:4px 0 14px;}
+.am-f{display:grid;grid-template-columns:1fr 78px 78px;gap:8px;align-items:center;padding:6px 10px;border-top:1px solid var(--gris2);}
+.am-f:first-child{border-top:none;}
+.am-f span{font-weight:700;font-size:.9em;}
+.am-f input{width:100%;padding:9px 8px;text-align:center;font-size:1em;}
+.am-cab{background:rgba(21,101,192,.08);}.am-cab span{font-size:.72em;text-transform:uppercase;letter-spacing:.4px;color:var(--gris4);text-align:center;}.am-cab span:first-child{text-align:left;}
+.am-tot{background:rgba(21,101,192,.06);}.am-tot b{text-align:center;font-size:1.05em;}
+.am-res{font-size:.85em;background:#e8f5e9;color:#1b5e20;border-radius:10px;padding:10px 12px;margin:-4px 0 6px;line-height:1.45;}
+html.oscuro .am-res{background:#12352a;color:#9be2b8;}
+.am-u{border:1.5px solid var(--gris2);border-radius:10px;margin-bottom:8px;}
+.am-u>summary{list-style:none;cursor:pointer;padding:11px 12px;font-weight:800;font-size:.9em;color:var(--azul);}
+.am-u>summary::-webkit-details-marker{display:none;}
+.am-u>summary::before{content:'＋ ';}.am-u[open]>summary::before{content:'－ ';}
+.am-u .am-n{font-weight:700;color:#0b7a43;font-size:.9em;}
+.am-u[open]{padding:0 10px 10px;}.am-u[open]>summary{padding:11px 2px;}
+.am-fila{display:grid;grid-template-columns:62px 1fr 40px;gap:6px;margin-bottom:6px;}
+.am-fila input{width:100%;padding:9px 8px;}.am-fila .am-cant{text-align:center;}
+.am-fila .btn-danger{padding:0;display:flex;align-items:center;justify-content:center;width:100%;}
+html.oscuro .am-u>summary{color:#9ec2ff;}
 .ci-pleg-nota{font-size:.78em;color:var(--gris4);margin-top:8px;line-height:1.4;}
 html.oscuro .ci-pleg>summary{color:#9ec2ff;} html.oscuro .ci-pleg>summary::after{color:#9ec2ff;}
 
@@ -1235,6 +1254,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
           <option value="oro_homicidio_af">HOMICIDIO CON ARMA DE FUEGO</option>
           <option value="oro_homicidio_cp">HOMICIDIO CON ARMA CORTOPUNZANTE</option>
           <option value="oro_socializacion">SOCIALIZACIÓN A UNIDADES</option>
+          <option value="oro_amanecer">ASÍ AMANECIÓ LA METROPOLITANA</option>
         </select>
       </div>
       <div class="event-card">
@@ -1821,6 +1841,7 @@ const EVENTOS={
   oro_homicidio_af:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA DE FUEGO',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios llegaron al lugar y dispararon...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'},{titulo:'Elementos materiales recuperados',placeholder:'Ej: Se recuperaron vainillas de arma de fuego...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
   oro_homicidio_cp:{categoria:'ORO 20',nombre:'HOMICIDIO CON ARMA CORTOPUNZANTE',municipioLibre:true,saludo:{destinatario:'mi General'},plantillaAspectos:[{titulo:'Motivo / móvil del hecho',placeholder:'Ej: El hecho se presentó al parecer por...'},{titulo:'Dinámica del hecho',placeholder:'Ej: Los victimarios atacaron al occiso con un arma cortopunzante...'},{titulo:'Identificación del occiso',placeholder:'Ej: El occiso fue identificado como...'},{titulo:'Reacción policial / capturados',placeholder:'Ej: En la reacción policial se logra la captura de...'}],muestraCapturados:true,muestraSPOA:true,muestraZap:true,muestraHerida:true,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:true,tipoVictima:'occiso'},
   oro_socializacion:{categoria:'ORO 20',nombre:'SOCIALIZACIÓN A UNIDADES',municipioLibre:false,formCI:true,sinDatos:true,saludo:{destinatario:'mi Capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
+  oro_amanecer:{categoria:'ORO 20',nombre:'ASÍ AMANECIÓ LA METROPOLITANA',municipioLibre:false,formCI:true,sinDatos:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_verificacion_x:{categoria:'CONTRAINTELIGENCIA',nombre:'VERIFICACIÓN PUBLICACIÓN EN REDES SOCIALES',municipioLibre:false,formCI:true,saludo:{destinatario:'mi Capitán'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_lesionado_proc:{categoria:'CONTRAINTELIGENCIA',nombre:'LESIONADO POR ARMA DE FUEGO EN PROCEDIMIENTO POLICIAL',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
   contra_accidente:{categoria:'CONTRAINTELIGENCIA',nombre:'UNIFORMADOS LESIONADOS EN ACCIDENTE DE TRÁNSITO',municipioLibre:true,formCI:true,saludo:{destinatario:'mi General'},plantillaAspectos:[],muestraCapturados:false,muestraSPOA:false,muestraZap:false,muestraHerida:false,muestraUnidad:false,muestraTelefono:false,muestraVictimarios:false,tipoVictima:null},
@@ -1872,7 +1893,7 @@ function seleccionarEvento(id){
   document.getElementById('aspectoInputBox').classList.add('hidden');
   document.getElementById('btnAgregarAspecto').classList.remove('hidden');
   document.getElementById('aspectoInputText').value='';
-  const noAspectos=['oro_socializacion'].includes(id);
+  const noAspectos=['oro_socializacion','oro_amanecer'].includes(id);
   document.getElementById('aspectosTitulo').textContent=c.tituloAspectos||'Aspectos de interés';
   document.getElementById('sectionAspectos').classList.toggle('hidden',noAspectos);
   document.getElementById('victimasContainer').innerHTML='';
@@ -2490,7 +2511,29 @@ const SOC_CIERRE='Frente a lo anterior se impartió instrucción al funcionario 
 const SOC_REG=window.MEBUC_COMPARTIDO.registrar('socializacion.json',{version:1,tema:SOC_TEMA,puntos:SOC_PUNTOS,cierre:SOC_CIERRE},
   d=>!!(d&&typeof d.tema==='string'&&Array.isArray(d.puntos)));
 const socOficial=()=>SOC_REG.datos();
+const AMANECER_MUN=['Bucaramanga','Floridablanca','Piedecuesta','Girón','Lebrija','Los Santos'];
+const AM_CASO=[{k:'titulo',l:'Título (sale en negrita, opcional)',full:true,ph:'Menor de edad lesionado con arma traumática'},
+  {k:'detalle',l:'Detalle',t:'area',full:true,ph:'durante el hurto de una cadena de oro a su progenitor, hecho ocurrido en el barrio Pablo VI de Bucaramanga.'}];
 const FORM_CI={
+  oro_amanecer:{dest:'mi General',titulo:'Así amaneció la Metropolitana',
+    recordar:['dest','fuente','horario','rural'].concat(AMANECER_MUN.flatMap((m,i)=>['h25_'+i,'h26_'+i])),campos:[
+    {t:'titulo',l:'1️⃣ Comportamiento homicidios'},
+    {t:'importar'},
+    {t:'txt',k:'fuente',l:'Fuente',def:'SIJIN GICRI'},
+    {t:'homi'},
+    {t:'txt',k:'rural',l:'Homicidios RURALES 2026 (el urbano se calcula solo)',num:true,ph:'10'},
+    {t:'homires'},
+    {t:'lista',k:'seguridad',l:'2️⃣ Hechos de afectación a la seguridad',item:'Caso',campos:AM_CASO},
+    {t:'lista',k:'ordenp',l:'3️⃣ Afectaciones de orden público',item:'Caso',campos:AM_CASO},
+    {t:'lista',k:'instit',l:'4️⃣ Novedades institucionales',item:'Novedad',campos:AM_CASO},
+    {t:'titulo',l:'5️⃣ Resultados operacionales'},
+    {t:'txt',k:'horario',l:'Horario de la operatividad',def:'16:00 a 04:00'},
+    {t:'opera'},
+    {t:'lista',k:'alertas',l:'6️⃣ Llamadas y difusión de alertas',item:'Caso',campos:AM_CASO},
+    {t:'lista',k:'noticias',l:'7️⃣ Información pública',item:'Noticia',campos:[
+      {k:'texto',l:'Texto de la noticia (sale en negrita)',t:'area',full:true,ph:'Capturan 14 personas por presunta minería ilegal…'},
+      {k:'link',l:'Link de la noticia',full:true,ph:'https://x.com/…'}]}
+  ]},
   oro_socializacion:{dest:'mi Capitán',titulo:'Datos de la socialización',recordar:['dest'],campos:[
     {t:'unidad',k:'unidad',l:'Unidad a la que se socializó'},
     {t:'txt',k:'unidadOtra',l:'Escribe la unidad',ph:'SECCIONAL DE TRÁNSITO',si:['unidad','otra|']},
@@ -2573,6 +2616,21 @@ function htmlCampoCI(c){
       us.map(e=>'<optgroup label="'+escAttr(e.grupo||('Estación '+e.estacion))+'">'+e.opciones.map(o=>'<option value="'+escAttr(o.valor)+'">'+escAttr(o.etiqueta)+'</option>').join('')+'</optgroup>').join('')+
       '<option value="otra|">✏️ Otra (escribirla)</option></select></div>';
   }
+  if(c.t==='importar')return '<details class="ci-pleg am-imp"><summary>📥 Cargar los números del PIN de ayer<span class="ci-pleg-res">Copia del WhatsApp el último “Así amaneció…” y pégalo aquí</span></summary>'+
+    '<div class="ci-pleg-cuerpo"><div class="form-group"><textarea id="amPegado" placeholder="Pega aquí el PIN anterior completo"></textarea></div>'+
+    '<button class="btn btn-add" type="button" onclick="amImportar()">📥 Cargar números</button><div class="ci-pleg-nota" id="amImpRes"></div></div></details>';
+  if(c.t==='homi')return '<div class="am-homi"><div class="am-f am-cab"><span>Municipio</span><span>2025</span><span>2026</span></div>'+
+    AMANECER_MUN.map((m,i)=>'<div class="am-f"><span>'+escAttr(m)+'</span><input data-k="h25_'+i+'" inputmode="numeric" placeholder="0"><input data-k="h26_'+i+'" inputmode="numeric" placeholder="0"></div>').join('')+
+    '<div class="am-f am-tot"><span>Total</span><b id="amT25">0</b><b id="amT26">0</b></div></div>';
+  if(c.t==='homires')return '<div class="am-res" id="amRes"></div>';
+  if(c.t==='opera'){
+    const us=typeof window.mebucUnidadesLista==='function'?window.mebucUnidadesLista():[];
+    return '<div class="am-opera" data-opera="1"><div class="ci-pleg-nota" style="margin:0 0 8px">Abre solo las unidades que tuvieron operatividad. Las que quedan vacías no salen en el PIN.</div>'+
+      us.map(u=>{const et=(u.tipo==='Subestación'?'SUBESTPO ':'ESTPO ')+u.nombre.toUpperCase();
+        return '<details class="am-u" data-u="'+escAttr(et)+'"><summary>'+escAttr(et)+' <span class="am-n"></span></summary><div class="am-filas"></div>'+
+          '<button class="btn btn-add" type="button" onclick="amFila(this.closest(\'.am-u\'))">＋ Agregar captura</button></details>';}).join('')+
+      '<datalist id="amMotivos">'+AM_MOTIVOS.map(m=>'<option value="'+escAttr(m)+'">').join('')+'</datalist></div>';
+  }
   if(c.t==='fecha')return '<div class="form-group">'+lab+'<input type="date" data-k="'+c.k+'"></div>';
   if(c.t==='estacion'){
     const ds=typeof window.mebucEstaciones==='function'?window.mebucEstaciones():[];
@@ -2628,6 +2686,7 @@ function renderFormCI(evId){
   if(guardado)ponerCI(evId,guardado);
   actualizarCondicionalesCI();
   marcarPlegableCI();
+  amCalcular();
 }
 function camposCI(f){const out=[];(f.campos||[]).forEach(c=>{out.push(c);if(c.t==='plegable')c.campos.forEach(x=>out.push(x));});return out;}
 // Contenido del plegable: ¿difiere del texto oficial?
@@ -2697,6 +2756,8 @@ function leerCI(){
     if(e.classList.contains('ci-lista'))return;
     o[e.dataset.k]=e.type==='checkbox'?e.checked:e.value.trim();
   });
+  const op=document.querySelector('#ciCampos [data-opera]');
+  if(op)o.opera=[...op.querySelectorAll('.am-u')].map(u=>({u:u.dataset.u,filas:[...u.querySelectorAll('.am-fila')].map(f=>({cant:f.querySelector('.am-cant').value.trim(),mot:f.querySelector('.am-mot').value.trim()})).filter(f=>f.mot||f.cant)})).filter(x=>x.filas.length);
   document.querySelectorAll('#ciCampos .ci-lista').forEach(l=>{
     o[l.dataset.k]=[...l.querySelectorAll('.ci-item')].map(it=>{const r={};it.querySelectorAll('[data-f]').forEach(e=>{r[e.dataset.f]=e.value.trim();});return r;});
   });
@@ -2714,8 +2775,15 @@ function ponerCI(evId,o){
     const items=l.querySelector('.ci-items');items.innerHTML='';
     datos.forEach(r=>{const it=agregarItemCI(evId,l.dataset.k);if(!it)return;it.querySelectorAll('[data-f]').forEach(e=>{if(r[e.dataset.f]!=null)e.value=r[e.dataset.f];});});
   });
+  const op=document.querySelector('#ciCampos [data-opera]');
+  if(op&&Array.isArray(o.opera)){
+    op.querySelectorAll('.am-filas').forEach(x=>x.innerHTML='');op.querySelectorAll('.am-u').forEach(u=>u.open=false);
+    o.opera.forEach(x=>{const u=[...op.querySelectorAll('.am-u')].find(e=>e.dataset.u===x.u);if(!u)return;u.open=true;x.filas.forEach(f=>amFila(u,f));});
+    amContar();
+  }
   actualizarCondicionalesCI();
   marcarPlegableCI();
+  amCalcular();
 }
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#ciCampos'))actualizarCondicionalesCI();});
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#ciCampos .ci-pleg'))marcarPlegableCI();});
@@ -2837,6 +2905,82 @@ function generarSocializacion(d,o){
   recordarPlantillaCI('oro_socializacion',o);
   return pin;
 }
+/* ---------- Así amaneció la Metropolitana ---------- */
+const AM_MOTIVOS=['por violencia intrafamiliar','por lesiones personales','por estupefacientes','por tráfico de estupefacientes','por hurto','por hurto calificado',
+  'por porte ilegal de armas de fuego','por porte de armas blancas','por falsedad marcaria','por injuria por vías de hecho','por receptación','por daño en bien ajeno',
+  'por violencia contra servidor público','por amenazas','orden judicial por hurto calificado','orden judicial por homicidio','orden judicial por inasistencia alimentaria'];
+function amNum(k){const e=document.querySelector('#ciCampos [data-k="'+k+'"]');const n=parseInt(e&&e.value,10);return isNaN(n)?0:n;}
+function amDatos(o){
+  const v=k=>{const n=parseInt(o[k],10);return isNaN(n)?0:n;};
+  const mun=AMANECER_MUN.map((m,i)=>({m,a:v('h25_'+i),b:v('h26_'+i)}));
+  const t25=mun.reduce((s,x)=>s+x.a,0),t26=mun.reduce((s,x)=>s+x.b,0),abs=t26-t25,rural=Math.min(v('rural'),t26);
+  const pct=(n,d)=>d?Math.round(n/d*100)+'%':'—';
+  return {mun,t25,t26,abs,absPct:pct(abs,t25),rural,urbano:t26-rural,ruralPct:pct(rural,t26),urbanoPct:pct(t26-rural,t26)};
+}
+function amCalcular(){
+  const r=document.getElementById('amRes');if(!r)return;
+  const o={};document.querySelectorAll('#ciCampos .am-homi [data-k], #ciCampos [data-k=rural]').forEach(e=>o[e.dataset.k]=e.value);
+  const d=amDatos(o);
+  document.getElementById('amT25').textContent=d.t25;document.getElementById('amT26').textContent=d.t26;
+  r.innerHTML='<b>Se calcula solo:</b> ABS '+(d.abs>0?'+':'')+d.abs+' ('+d.absPct+') · RURAL '+d.rural+' ('+d.ruralPct+') · URBANO '+d.urbano+' ('+d.urbanoPct+')';
+}
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#ciCampos')&&(e.target.closest('.am-homi')||e.target.dataset.k==='rural'))amCalcular();});
+function amFila(u,f){
+  const c=u.querySelector('.am-filas');
+  c.insertAdjacentHTML('beforeend','<div class="am-fila"><input class="am-cant" inputmode="numeric" placeholder="01"><input class="am-mot" list="amMotivos" placeholder="por violencia intrafamiliar">'+
+    '<button class="btn btn-danger" type="button" onclick="const u=this.closest(\'.am-u\');this.parentNode.remove();amContar();if(typeof programarBorrador===\'function\')programarBorrador();">✕</button></div>');
+  const fila=c.lastElementChild;
+  if(f){fila.querySelector('.am-cant').value=f.cant||'';fila.querySelector('.am-mot').value=f.mot||'';}
+  else fila.querySelector('.am-cant').focus();
+  amContar();return fila;
+}
+function amContar(){document.querySelectorAll('#ciCampos .am-u').forEach(u=>{const n=u.querySelectorAll('.am-fila').length;u.querySelector('.am-n').textContent=n?'· '+n+' captura'+(n===1?'':'s'):'';});}
+function amImportar(){
+  const t=(document.getElementById('amPegado').value||'').replace(/\r/g,'');const res=document.getElementById('amImpRes');
+  const norm=x=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const top=t.slice(Math.max(0,t.search(/TOP/i)));let n=0;
+  AMANECER_MUN.forEach((m,i)=>{
+    const re=new RegExp('^\\s*'+norm(m).replace(/ /g,'\\s+')+'\\s*:?\\s*(\\d+)\\s*\\(\\s*([+\\-−–]?)\\s*(\\d+)\\s*\\)','im');
+    const x=norm(top).match(re);
+    const e25=document.querySelector('#ciCampos [data-k="h25_'+i+'"]'),e26=document.querySelector('#ciCampos [data-k="h26_'+i+'"]');
+    if(x){const b=+x[1],dif=(x[2]&&x[2]!=='+'?-1:1)*(+x[3]);e26.value=b;e25.value=b-dif;n++;}
+    else{e26.value=0;e25.value=0;}
+  });
+  const ru=t.match(/RURAL\s*:?\s*(\d+)/i);if(ru)document.querySelector('#ciCampos [data-k=rural]').value=ru[1];
+  const fu=t.match(/\(fuente\s+([^)]+)\)/i);if(fu)document.querySelector('#ciCampos [data-k=fuente]').value=fu[1].trim();
+  const ho=t.match(/Operatividad\s+([^*\n]+)/i);if(ho)document.querySelector('#ciCampos [data-k=horario]').value=ho[1].trim();
+  amCalcular();
+  if(n){res.innerHTML='✅ Se cargaron '+n+' municipios'+(ru?' y el rural':'')+'. Ahora actualiza solo los números que cambiaron.';document.getElementById('amPegado').value='';document.querySelector('.am-imp').open=false;
+    document.querySelector('#ciCampos .am-homi').scrollIntoView({behavior:'smooth',block:'center'});}
+  else res.innerHTML='⚠️ No encontré los números. Verifica que pegaste el PIN completo con la parte “TOP Homicidios”.';
+  if(typeof programarBorrador==='function')programarBorrador();
+}
+function generarAmanecer(d,o){
+  const h=amDatos(o);
+  const sec=(lista,fn)=>{const x=(lista||[]).map(fn).filter(Boolean);return x.length?x.join('\n\n'):'No se registraron';};
+  const negrita=t=>{t=(t||'').replace(/\s*\n+\s*/g,' ').trim().replace(/^\*+|\*+$/g,'').trim();return t?'*'+t+'*':'';};
+  const caso=c=>{const ti=negrita(c.titulo),de=(c.detalle||'').trim();return [ti,de].filter(Boolean).join(' ');};
+  let pin='Así amaneció la Metropolitana de Bucaramanga\n\n';
+  const sal=d.saludo.texto;pin+='Dios y Patria '+o.dest+' '+sal+'.\n\n';
+  pin+='1️⃣ COMPORTAMIENTO HOMICIDIOS (fuente '+(o.fuente||'SIJIN GICRI')+')\n\n';
+  pin+='2025: '+h.t25+'\n2026: '+h.t26+'\nABS: '+h.abs+' ('+h.absPct+')\nRURAL: '+h.rural+' ('+h.ruralPct+')\nURBANO: '+h.urbano+' ('+h.urbanoPct+')\n\n';
+  pin+='TOP Homicidios Metropolitana\n\n';
+  const top=h.mun.filter(x=>x.b>0||x.a>0).sort((a,b)=>b.b-a.b||b.a-a.a);
+  pin+=(top.length?top.map(x=>{const df=x.b-x.a;return x.m+': '+x.b+' ('+(df>0?'+':'')+df+')';}).join('\n'):'Sin registros')+'\n\n';
+  pin+='2️⃣ HECHOS DE AFECTACIÓN A LA SEGURIDAD\n\n'+sec(o.seguridad,caso)+'\n\n';
+  pin+='3️⃣ AFECTACIONES DE ORDEN PÚBLICO\n\n'+sec(o.ordenp,caso)+'\n\n';
+  pin+='4️⃣ NOVEDADES INSTITUCIONALES\n\n'+sec(o.instit,caso)+'\n\n';
+  pin+='5️⃣ RESULTADOS OPERACIONALES\n\n';
+  const ops=(o.opera||[]).map(u=>({u:u.u,filas:u.filas.filter(f=>f.mot)})).filter(u=>u.filas.length);
+  if(ops.length){
+    pin+='*Operatividad '+(o.horario||'16:00 a 04:00')+'*\n\n';
+    pin+=ops.map(u=>'*'+u.u+':*\n'+u.filas.map(f=>{const n=parseInt(f.cant,10)||1;return '('+String(n).padStart(2,'0')+') '+f.mot;}).join('\n')).join('\n\n')+'\n\n';
+  }else pin+='No se registraron\n\n';
+  pin+='6️⃣ LLAMADAS Y DIFUSIÓN DE ALERTAS\n\n'+sec(o.alertas,caso)+'\n\n';
+  pin+='7️⃣ INFORMACIÓN PÚBLICA\n\n'+sec(o.noticias,x=>{const t=negrita(x.texto),l=(x.link||'').trim();return [t,l].filter(Boolean).join('\n\n');});
+  recordarPlantillaCI('oro_amanecer',o);
+  return pin;
+}
 function puntosMiles(n){const x=String(n||'').replace(/\D/g,'');return x&&x===String(n).replace(/[.\s]/g,'')?x.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):String(n||'');}
 function edadDesde(iso){if(!iso)return null;const[y,m,d]=iso.split('-').map(Number);const h=new Date();let e=h.getFullYear()-y;if(h.getMonth()+1<m||(h.getMonth()+1===m&&h.getDate()<d))e--;return e>=0&&e<120?e:null;}
 function generarPolicialLesionado(d,o){
@@ -2857,7 +3001,7 @@ function generarPolicialLesionado(d,o){
   if(aspectosData.length)pin+='*DATOS DE INTERÉS:*\n'+aspectosData.map(a=>'• '+a).join('\n\n');
   return pin.trim();
 }
-const GENERADORES_CI={contra_policial_lesionado:generarPolicialLesionado,oro_socializacion:generarSocializacion,contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
+const GENERADORES_CI={oro_amanecer:generarAmanecer,contra_policial_lesionado:generarPolicialLesionado,oro_socializacion:generarSocializacion,contra_verificacion_x:generarRedSocial,contra_lesionado_proc:generarLesionadoProc,contra_accidente:generarAccidente,
   contra_verif_servicio:generarVerifServicio,contra_proc_irregular:generarProcIrregular};
 
 /* ---------- Generación de PIN ---------- */
@@ -3234,6 +3378,7 @@ reconstruir();
 function liveGroups() { return GRUPOS; }
 
 /* ---------------- Para el PIN: unidades (socialización) y barrio → ZAP (GPS) ---------------- */
+window.mebucUnidadesLista = () => datos().distritos.flatMap(d => (d.unidades || []).map(u => ({ tipo: u.tipo, nombre: u.nombre })));
 window.mebucEstaciones = () => datos().distritos.map(d => ({ distrito: d.nombre, unidades: (d.unidades || []).map(etqUnidad) }));
 window.mebucUnidades = function() {
   const out = [];
